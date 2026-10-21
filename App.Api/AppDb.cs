@@ -26,6 +26,9 @@ public class AppDb(DbContextOptions<AppDb> options) : DbContext(options)
         {
             entity.ToTable("Employees");
             entity.HasKey(employee => employee.Id);
+            entity.Property(employee => employee.ParkingStatus)
+                .HasConversion<string>()
+                .HasColumnType("employee_parking_status");
             entity.HasIndex(employee => employee.EmployeeId).IsUnique();
             entity.HasIndex(employee => employee.Email).IsUnique();
         });
@@ -34,6 +37,11 @@ public class AppDb(DbContextOptions<AppDb> options) : DbContext(options)
         {
             entity.ToTable("Accounts");
             entity.HasKey(account => account.Id);
+            entity.Property(account => account.Role)
+                .HasConversion(
+                    role => role == AccountRole.Employee ? "employee" : "gateGuard",
+                    value => value == "employee" ? AccountRole.Employee : AccountRole.GateGuard)
+                .HasColumnType("account_role");
             entity.HasIndex(account => account.EmployeeId).IsUnique();
             entity.HasIndex(account => account.Email).IsUnique();
             entity.HasOne(account => account.Employee)
@@ -52,5 +60,15 @@ public class AppDb(DbContextOptions<AppDb> options) : DbContext(options)
                 .HasForeignKey(token => token.AccountId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
+        modelBuilder.Entity<ParkingRelease>()
+            .Property(release => release.Status)
+            .HasConversion<string>()
+            .HasColumnType("parking_release_status");
+
+        modelBuilder.Entity<ParkingClaimEntity>()
+            .Property(claim => claim.Status)
+            .HasConversion<string>()
+            .HasColumnType("parking_claim_status");
     }
 }
