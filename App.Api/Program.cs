@@ -1,12 +1,37 @@
 using App.Api;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
+    options.AddSchemaTransformer<AuthSchemaTransformer>();
+});
 // PostgreSQL: the connection comes from ConnectionStrings__App and nowhere else. There is no built-in login: an app that is
 // not given one stops when it first needs the database, so it can never run on a password that is written in the code.
-builder.Services.AddDbContext<AppDb>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("App")
-    ?? throw new InvalidOperationException("No database connection is configured. Set ConnectionStrings__App (for example Host=...;Port=5432;Database=...;Username=...;Password=...).")));
+builder.Services.AddDbContext<AppDb>(o => o.UseNpgsql(
+    builder.Configuration.GetConnectionString("App")
+        ?? throw new InvalidOperationException("No database connection is configured. Set ConnectionStrings__App (for example Host=...;Port=5432;Database=...;Username=...;Password=...)."),
+    npgsql => npgsql
+        .MapEnum<EmployeeParkingStatus>("employee_parking_status")
+        .MapEnum<AccountRole>("account_role")));
+builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+builder.Services.AddScoped<IPasswordHasher<Account>, PasswordHasher<Account>>();
+builder.Services.AddAuthentication("Bearer")
+    .AddScheme<AuthenticationSchemeOptions, BearerAuthenticationHandler>("Bearer", _ => { });
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Administrator", policy => policy.RequireRole("parkingAdministrator", "Administrator", "administrator"));
+    options.AddPolicy("GateOrAdmin", policy => policy.RequireRole("gateGuard", "GateGuard", "parkingAdministrator", "Administrator", "administrator"));
+});
+foreach (var moduleType in typeof(IApiEndpointModule).Assembly.GetTypes()
+             .Where(type => !type.IsAbstract && !type.IsInterface && typeof(IApiEndpointModule).IsAssignableFrom(type)))
+{
+    builder.Services.AddTransient(typeof(IApiEndpointModule), moduleType);
+}
 // the web app's address: 3000 unless the setting Cors:Origin names another (the factory sets it when it starts the web app on another port)
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.WithOrigins(builder.Configuration["Cors:Origin"] ?? "http://localhost:3000").AllowAnyHeader().AllowAnyMethod()));
 var app = builder.Build();
@@ -24,8 +49,22 @@ if (System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name != "GetDocumen
         if (app.Configuration.GetValue<bool>("Seed:Demo")) SeedData.Run(db);
     }
 }
+app.UseExceptionHandler(handler => handler.Run(async context =>
+{
+    var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+    var exception = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
+    logger.LogError(exception, "An unhandled API error occurred for {Path}", context.Request.Path);
+    context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+    await context.Response.WriteAsJsonAsync(new Error("An unexpected error occurred.", "INTERNAL_SERVER_ERROR"));
+}));
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapGet("/", () => "API is up").ExcludeFromDescription();
+foreach (var module in app.Services.GetServices<IApiEndpointModule>())
+{
+    module.Map(app);
+}
 // The API's own document (/openapi/v1.json) and a page to read and try it (/swagger). Keep both: the factory's product page links to the page.
 app.MapOpenApi();
 app.UseSwaggerUI(o => o.SwaggerEndpoint("/openapi/v1.json", "API"));
