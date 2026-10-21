@@ -13,6 +13,8 @@ public class AppDb(DbContextOptions<AppDb> options) : DbContext(options)
     {
         modelBuilder.HasPostgresEnum<EmployeeParkingStatus>(name: "employee_parking_status");
         modelBuilder.HasPostgresEnum<AccountRole>(name: "account_role");
+        modelBuilder.HasPostgresEnum<ParkingReleaseStatus>(name: "parking_release_status");
+        modelBuilder.HasPostgresEnum<ParkingClaimStatus>(name: "parking_claim_status");
 
         foreach (var entityType in Assembly.GetExecutingAssembly().GetTypes()
                      .Where(type => type is { IsAbstract: false, IsInterface: false } && typeof(IAppEntity).IsAssignableFrom(type)))

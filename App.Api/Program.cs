@@ -17,7 +17,9 @@ builder.Services.AddDbContext<AppDb>(o => o.UseNpgsql(
         ?? throw new InvalidOperationException("No database connection is configured. Set ConnectionStrings__App (for example Host=...;Port=5432;Database=...;Username=...;Password=...)."),
     npgsql => npgsql
         .MapEnum<EmployeeParkingStatus>("employee_parking_status")
-        .MapEnum<AccountRole>("account_role")));
+        .MapEnum<AccountRole>("account_role")
+        .MapEnum<ParkingReleaseStatus>("parking_release_status")
+        .MapEnum<ParkingClaimStatus>("parking_claim_status")));
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddScoped<IPasswordHasher<Account>, PasswordHasher<Account>>();
 builder.Services.AddAuthentication("Bearer")
@@ -45,6 +47,40 @@ if (System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name != "GetDocumen
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDb>();
         db.Database.EnsureCreated();
+        db.Database.ExecuteSqlRaw("""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_cast
+                    WHERE castsource = 'text'::regtype
+                      AND casttarget = 'employee_parking_status'::regtype
+                ) THEN
+                    EXECUTE 'CREATE CAST (text AS employee_parking_status) WITH INOUT AS IMPLICIT';
+                END IF;
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_cast
+                    WHERE castsource = 'text'::regtype
+                      AND casttarget = 'account_role'::regtype
+                ) THEN
+                    EXECUTE 'CREATE CAST (text AS account_role) WITH INOUT AS IMPLICIT';
+                END IF;
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_cast
+                    WHERE castsource = 'text'::regtype
+                      AND casttarget = 'parking_release_status'::regtype
+                ) THEN
+                    EXECUTE 'CREATE CAST (text AS parking_release_status) WITH INOUT AS IMPLICIT';
+                END IF;
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_cast
+                    WHERE castsource = 'text'::regtype
+                      AND casttarget = 'parking_claim_status'::regtype
+                ) THEN
+                    EXECUTE 'CREATE CAST (text AS parking_claim_status) WITH INOUT AS IMPLICIT';
+                END IF;
+            END
+            $$;
+            """);
         // sample rows, only when asked for (Seed__Demo=true): tests and the factory's own checks start on an empty database
         if (app.Configuration.GetValue<bool>("Seed:Demo")) SeedData.Run(db);
     }
