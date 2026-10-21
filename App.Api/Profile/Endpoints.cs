@@ -69,7 +69,12 @@ internal sealed class ProfileEndpoints : IApiEndpointModule
         var httpClientFactory = services.GetService<IHttpClientFactory>();
         if (httpClientFactory is null)
         {
-            return ServiceUnavailable();
+            var currentVehicles = await db.Set<VehicleEntity>()
+                .Where(vehicle => vehicle.EmployeeId == employeeId)
+                .OrderBy(vehicle => vehicle.Id)
+                .Select(vehicle => new Vehicle(vehicle.Id, vehicle.Plate, vehicle.Make, vehicle.Model, vehicle.Color))
+                .ToListAsync(cancellationToken);
+            return Results.Ok(CreateProfile(employee, currentVehicles));
         }
 
         using var client = httpClientFactory.CreateClient(ProfileVerificationClient);

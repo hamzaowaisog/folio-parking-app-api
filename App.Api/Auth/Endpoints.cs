@@ -36,14 +36,25 @@ internal sealed class AuthEndpoints : IApiEndpointModule
                     return Conflict();
                 }
 
-                var employee = new Employee
+                var employee = await db.Employees.SingleOrDefaultAsync(
+                    candidate => candidate.Email.ToLower() == normalizedEmail,
+                    cancellationToken);
+                if (employee is null)
                 {
-                    EmployeeId = $"EMP-{Guid.NewGuid():N}"[..16].ToUpperInvariant(),
-                    Name = request.Name.Trim(),
-                    Email = email,
-                    Role = "Employee",
-                    ParkingStatus = EmployeeParkingStatus.Dedicated
-                };
+                    employee = new Employee
+                    {
+                        EmployeeId = $"EMP-{Guid.NewGuid():N}"[..16].ToUpperInvariant(),
+                        Name = request.Name.Trim(),
+                        Email = email,
+                        Role = "Employee",
+                        ParkingStatus = EmployeeParkingStatus.Dedicated
+                    };
+                }
+                else if (employee.Account is not null)
+                {
+                    return Conflict();
+                }
+
                 var account = new Account
                 {
                     Email = email,
