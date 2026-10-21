@@ -757,7 +757,7 @@ public sealed class Part2AuthenticationHandler : AuthenticationHandler<Authentic
     }
 }
 
-public sealed class UnavailableGateServiceProxy : DispatchProxy
+public class UnavailableGateServiceProxy : DispatchProxy
 {
     private int _callCount;
     public int CallCount => Volatile.Read(ref _callCount);

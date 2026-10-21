@@ -14,7 +14,9 @@ public static class SeedData
     private static readonly DateTimeOffset ExpiredInstant = new(2024, 10, 14, 3, 0, 0, TimeSpan.Zero);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    public static void Run(AppDb db)
+    /// <param name="password">The sample accounts' password (the setting Seed:Password). Without one each gets a random password
+    /// nobody knows, so no password written in the code opens an account: a person trying the product signs up instead.</param>
+    public static void Run(AppDb db, string? password = null)
     {
         ArgumentNullException.ThrowIfNull(db);
 
@@ -23,7 +25,7 @@ public static class SeedData
         var employees = SeedEmployees(db);
         db.SaveChanges();
 
-        var accounts = SeedAccounts(db, employees);
+        var accounts = SeedAccounts(db, employees, password);
         db.SaveChanges();
 
         SeedSessionTokens(db, accounts);
@@ -65,7 +67,7 @@ public static class SeedData
         return employees;
     }
 
-    private static Dictionary<string, Account> SeedAccounts(AppDb db, IReadOnlyDictionary<string, Employee> employees)
+    private static Dictionary<string, Account> SeedAccounts(AppDb db, IReadOnlyDictionary<string, Employee> employees, string? password)
     {
         var accounts = new Dictionary<string, Account>(StringComparer.Ordinal);
         var passwordHasher = new PasswordHasher<Account>();
@@ -85,7 +87,8 @@ public static class SeedData
                     Role = sample.Role,
                     CreatedAt = DemoInstant
                 };
-                account.PasswordHash = passwordHasher.HashPassword(account, "Parking2025!");
+                account.PasswordHash = passwordHasher.HashPassword(account,
+                    string.IsNullOrEmpty(password) ? Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24)) : password);
                 db.Accounts.Add(account);
             }
 

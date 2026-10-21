@@ -52,6 +52,7 @@ internal sealed class BearerAuthenticationHandler : AuthenticationHandler<Authen
 
         var account = sessionToken.Account;
         var employee = account.Employee;
+        var role = await AdministratorCheck.SessionRoleAsync(_db, account, Context.RequestAborted);
         var claims = new List<Claim>
         {
             new System.Security.Claims.Claim(ClaimTypes.NameIdentifier, account.Id.ToString()),
@@ -60,8 +61,8 @@ internal sealed class BearerAuthenticationHandler : AuthenticationHandler<Authen
             new System.Security.Claims.Claim("sessionTokenId", sessionToken.Id.ToString()),
             new System.Security.Claims.Claim(ClaimTypes.Name, employee.Name),
             new System.Security.Claims.Claim(ClaimTypes.Email, employee.Email),
-            new System.Security.Claims.Claim("role", account.Role == AccountRole.GateGuard ? "gateGuard" : "employee"),
-            new System.Security.Claims.Claim(ClaimTypes.Role, account.Role == AccountRole.GateGuard ? "gateGuard" : "employee")
+            new System.Security.Claims.Claim("role", role),
+            new System.Security.Claims.Claim(ClaimTypes.Role, role)
         };
         var identity = new ClaimsIdentity(claims, Scheme.Name);
         var principal = new ClaimsPrincipal(identity);

@@ -47,7 +47,8 @@ internal sealed class AuthEndpoints : IApiEndpointModule
                         Name = request.Name.Trim(),
                         Email = email,
                         Role = "Employee",
-                        ParkingStatus = EmployeeParkingStatus.Dedicated
+                        // a dedicated space is assigned by an administrator, never taken at sign-up
+                        ParkingStatus = EmployeeParkingStatus.Temporary
                     };
                 }
                 else if (employee.Account is not null)
@@ -125,7 +126,7 @@ internal sealed class AuthEndpoints : IApiEndpointModule
                     account.Employee.Id,
                     account.Employee.Name,
                     account.Employee.Email,
-                    account.Role == AccountRole.GateGuard ? "gateGuard" : "employee",
+                    await AdministratorCheck.SessionRoleAsync(db, account, cancellationToken),
                     account.Employee.ParkingStatus == EmployeeParkingStatus.Dedicated
                         ? "dedicated"
                         : "temporary");

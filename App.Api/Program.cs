@@ -17,12 +17,7 @@ builder.Services.AddOpenApi(options =>
 // not given one stops when it first needs the database, so it can never run on a password that is written in the code.
 builder.Services.AddDbContext<AppDb>(o => o.UseNpgsql(
     builder.Configuration.GetConnectionString("App")
-        ?? throw new InvalidOperationException("No database connection is configured. Set ConnectionStrings__App (for example Host=...;Port=5432;Database=...;Username=...;Password=...)."),
-    npgsql => npgsql
-        .MapEnum<EmployeeParkingStatus>("employee_parking_status")
-        .MapEnum<AccountRole>("account_role")
-        .MapEnum<ParkingReleaseStatus>("parking_release_status")
-        .MapEnum<ParkingClaimStatus>("parking_claim_status")));
+        ?? throw new InvalidOperationException("No database connection is configured. Set ConnectionStrings__App (for example Host=...;Port=5432;Database=...;Username=...;Password=...).")));
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddScoped<IPasswordHasher<Account>, PasswordHasher<Account>>();
 builder.Services.AddAuthentication("Bearer")
@@ -100,7 +95,7 @@ if (System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name != "GetDocumen
             $$;
             """);
         // sample rows, only when asked for (Seed__Demo=true): tests and the factory's own checks start on an empty database
-        if (app.Configuration.GetValue<bool>("Seed:Demo")) SeedData.Run(db);
+        if (app.Configuration.GetValue<bool>("Seed:Demo")) SeedData.Run(db, app.Configuration["Seed:Password"]);
     }
 }
 app.UseExceptionHandler(handler => handler.Run(async context =>

@@ -9,6 +9,14 @@ public class AppDb(DbContextOptions<AppDb> options) : DbContext(options)
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<SessionToken> SessionTokens => Set<SessionToken>();
 
+    // the enum mapping lives here, not in Program.cs, so every context (the app's, the seed's, a test's own) reads and writes the enums
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
+        optionsBuilder.UseNpgsql(npgsql => npgsql
+            .MapEnum<EmployeeParkingStatus>("employee_parking_status")
+            .MapEnum<AccountRole>("account_role")
+            .MapEnum<ParkingReleaseStatus>("parking_release_status")
+            .MapEnum<ParkingClaimStatus>("parking_claim_status"));
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasPostgresEnum<EmployeeParkingStatus>(name: "employee_parking_status");
@@ -26,9 +34,7 @@ public class AppDb(DbContextOptions<AppDb> options) : DbContext(options)
         {
             entity.ToTable("Employees");
             entity.HasKey(employee => employee.Id);
-            entity.Property(employee => employee.ParkingStatus)
-                .HasConversion<string>()
-                .HasColumnType("employee_parking_status");
+            entity.Property(employee => employee.ParkingStatus).HasColumnType("employee_parking_status");
             entity.HasIndex(employee => employee.EmployeeId).IsUnique();
             entity.HasIndex(employee => employee.Email).IsUnique();
         });
@@ -37,11 +43,7 @@ public class AppDb(DbContextOptions<AppDb> options) : DbContext(options)
         {
             entity.ToTable("Accounts");
             entity.HasKey(account => account.Id);
-            entity.Property(account => account.Role)
-                .HasConversion(
-                    role => role == AccountRole.Employee ? "employee" : "gateGuard",
-                    value => value == "employee" ? AccountRole.Employee : AccountRole.GateGuard)
-                .HasColumnType("account_role");
+            entity.Property(account => account.Role).HasColumnType("account_role");
             entity.HasIndex(account => account.EmployeeId).IsUnique();
             entity.HasIndex(account => account.Email).IsUnique();
             entity.HasOne(account => account.Employee)
@@ -63,12 +65,10 @@ public class AppDb(DbContextOptions<AppDb> options) : DbContext(options)
 
         modelBuilder.Entity<ParkingRelease>()
             .Property(release => release.Status)
-            .HasConversion<string>()
             .HasColumnType("parking_release_status");
 
         modelBuilder.Entity<ParkingClaimEntity>()
             .Property(claim => claim.Status)
-            .HasConversion<string>()
             .HasColumnType("parking_claim_status");
     }
 }
