@@ -1,0 +1,3 @@
+bin/
+obj/
+App.Api/openapi/*.json
