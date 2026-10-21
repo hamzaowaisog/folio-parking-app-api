@@ -1,0 +1,1894 @@
+openapi: 3.0.3
+info:
+  title: Folio3 Parking API
+  version: 1.0.0
+servers:
+  - url: https://api.folio3.example.com
+security:
+  - bearerAuth: []
+paths:
+  /auth/register:
+    post:
+      operationId: registerAccount
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              name: "Ayesha Malik"
+              email: "ayesha.malik@folio3.com"
+              password: "Parking2025!"
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationResult'
+              example:
+                message: "Your account is ready."
+                email: "ayesha.malik@folio3.com"
+                accountStatus: "created"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /auth/login:
+    post:
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: "ayesha.malik@folio3.com"
+              password: "Parking2025!"
+      responses:
+        '200':
+          description: Authenticated session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+              example:
+                accessToken: "eyJhbGciOi-example-token"
+                tokenType: "Bearer"
+                expiresIn: 3600
+                employee:
+                  id: 1042
+                  name: "Ayesha Malik"
+                  email: "ayesha.malik@folio3.com"
+                  role: "employee"
+                  parkingStatus: "dedicated"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /me/profile:
+    get:
+      operationId: getMyProfile
+      responses:
+        '200':
+          description: Employee profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeProfile'
+              example:
+                employee:
+                  id: 1042
+                  employeeId: "EMP-1042"
+                  name: "Ayesha Malik"
+                  email: "ayesha.malik@folio3.com"
+                  department: "Engineering"
+                  role: "Senior Engineer"
+                parking:
+                  status: "dedicated"
+                  assignedFloor: "Floor 2"
+                vehicles:
+                  - id: 1
+                    plate: "BRD-139"
+                    make: "Suzuki"
+                    model: "Cultus"
+                    color: "Red"
+                unavailableFields: []
+                retryableFields: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me/profile/retry:
+    post:
+      operationId: retryMyProfileFields
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileRetryRequest'
+            example:
+              fields:
+                - "department"
+                - "assignedFloor"
+      responses:
+        '200':
+          description: Retried employee profile fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeProfile'
+              example:
+                employee:
+                  id: 1042
+                  employeeId: "EMP-1042"
+                  name: "Ayesha Malik"
+                  email: "ayesha.malik@folio3.com"
+                  department: "Engineering"
+                  role: "Senior Engineer"
+                parking:
+                  status: "dedicated"
+                  assignedFloor: "Floor 2"
+                vehicles:
+                  - id: 1
+                    plate: "BRD-139"
+                    make: "Suzuki"
+                    model: "Cultus"
+                    color: "Red"
+                unavailableFields: []
+                retryableFields: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /me/vehicles:
+    post:
+      operationId: addMyVehicle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleInput'
+            example:
+              plate: "BRD-139"
+              make: "Suzuki"
+              model: "Cultus"
+              color: "Red"
+      responses:
+        '201':
+          description: Vehicle registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+              example:
+                id: 1
+                plate: "BRD-139"
+                make: "Suzuki"
+                model: "Cultus"
+                color: "Red"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /parking/dashboard:
+    get:
+      operationId: getParkingDashboard
+      responses:
+        '200':
+          description: Employee parking dashboard
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+              example:
+                employee:
+                  id: 1042
+                  name: "Bilal Ahmed"
+                  email: "bilal.ahmed@folio3.com"
+                  parkingStatus: "temporary"
+                officeDate: "2025-10-14"
+                releases: []
+                availability:
+                  date: "2025-10-14"
+                  count: 5
+                  areas:
+                    - name: "Floor 1"
+                      count: 2
+                    - name: "Floor 3"
+                      count: 3
+                  notYetClaimable:
+                    - area: "Floor 2"
+                      count: 2
+                      claimableAt: "2025-10-15T09:30:00+05:00"
+                currentClaim: null
+                notice:
+                  message: "Parking is free today. 5 spots on Floors 1 and 3."
+                  email: "bilal.ahmed@folio3.com"
+                unavailableFields: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /parking/releases/today:
+    post:
+      operationId: releaseTodaysParking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TodayReleaseRequest'
+            example:
+              officeDate: "2025-10-14"
+      responses:
+        '200':
+          description: Today release result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseRecord'
+              example:
+                id: 501
+                date: "2025-10-14"
+                status: "Released"
+                area: "Floor 2"
+                createdBy: "Ayesha Malik"
+                createdAt: "2025-10-14T08:01:00+05:00"
+                lastChangedBy: "Ayesha Malik"
+                lastChangedAt: "2025-10-14T08:01:00+05:00"
+                claimableAt: "2025-10-14T08:00:00+05:00"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /parking/releases:
+    get:
+      operationId: listMyReleases
+      parameters:
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+      responses:
+        '200':
+          description: Dated releases
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseList'
+              example:
+                releases:
+                  - id: 502
+                    date: "2025-10-17"
+                    status: "Reserved"
+                    area: "Floor 2"
+                    createdBy: "Ayesha Malik"
+                    createdAt: "2025-10-14T08:12:00+05:00"
+                    lastChangedBy: "Ayesha Malik"
+                    lastChangedAt: "2025-10-14T08:12:00+05:00"
+                    claimableAt: "2025-10-17T08:00:00+05:00"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: scheduleReleases
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseScheduleRequest'
+            example:
+              dates:
+                - "2025-10-22"
+                - "2025-10-23"
+      responses:
+        '201':
+          description: Scheduled release records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseList'
+              example:
+                releases:
+                  - id: 503
+                    date: "2025-10-22"
+                    status: "Reserved"
+                    area: "Floor 2"
+                    createdBy: "Ayesha Malik"
+                    createdAt: "2025-10-14T08:12:00+05:00"
+                    lastChangedBy: "Ayesha Malik"
+                    lastChangedAt: "2025-10-14T08:12:00+05:00"
+                    claimableAt: "2025-10-22T08:00:00+05:00"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /parking/releases/{releaseId}/cancel:
+    post:
+      operationId: cancelRelease
+      parameters:
+        - name: releaseId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelReleaseRequest'
+            example:
+              reason: "Employee requested cancellation"
+      responses:
+        '200':
+          description: Cancellation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseActionResult'
+              example:
+                message: "Release for Fri 17 Oct cancelled."
+                release:
+                  id: 502
+                  date: "2025-10-17"
+                  status: "Reserved"
+                  area: "Floor 2"
+                  createdBy: "Ayesha Malik"
+                  createdAt: "2025-10-14T08:12:00+05:00"
+                  lastChangedBy: "Ayesha Malik"
+                  lastChangedAt: "2025-10-14T08:12:00+05:00"
+                  claimableAt: "2025-10-17T08:00:00+05:00"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /parking/availability:
+    get:
+      operationId: getParkingAvailability
+      parameters:
+        - $ref: '#/components/parameters/Date'
+      responses:
+        '200':
+          description: Available and scheduled parking areas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Availability'
+              example:
+                date: "2025-10-14"
+                count: 5
+                areas:
+                  - name: "Floor 1"
+                    count: 2
+                  - name: "Floor 3"
+                    count: 3
+                notYetClaimable:
+                  - area: "Floor 2"
+                    count: 2
+                    claimableAt: "2025-10-15T09:30:00+05:00"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /parking/claims:
+    post:
+      operationId: claimParkingSpace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimRequest'
+            example:
+              date: "2025-10-14"
+              plate: "AWC-917"
+      responses:
+        '201':
+          description: Temporary parking claim
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParkingClaim'
+              example:
+                id: 801
+                date: "2025-10-14"
+                plate: "AWC-917"
+                area: "Floor 3"
+                status: "Claimed"
+                createdBy: "Bilal Ahmed"
+                createdAt: "2025-10-14T08:03:00+05:00"
+                lastChangedBy: "Bilal Ahmed"
+                lastChangedAt: "2025-10-14T08:03:00+05:00"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /gate/events/live:
+    get:
+      operationId: getLiveGateEvents
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Current gate status and recent checks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GateFeed'
+              example:
+                cameraStatus: "online"
+                events:
+                  - id: 9001
+                    plate: "LXA-093"
+                    driver: "Unknown driver"
+                    date: "2025-10-14"
+                    time: "08:24:15"
+                    result: "Denied"
+                    entryStatus: "Denied"
+                    indicatorState: "off"
+                    reason: "No valid authorisation today"
+                    permanentSticker: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /admin/entry-records:
+    get:
+      operationId: listEntryRecords
+      parameters:
+        - name: result
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - Authorised
+              - Existing process
+              - Denied
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+      responses:
+        '200':
+          description: Detailed vehicle verification records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationList'
+              example:
+                records:
+                  - id: 9002
+                    plate: "KLM-305"
+                    driver: "Sana Raza"
+                    date: "2025-10-14"
+                    time: "08:31:02"
+                    result: "Existing process"
+                    entryStatus: "Existing process"
+                    indicatorState: "not used"
+                    reason: "Permanent sticker. Use the existing process."
+                    permanentSticker: true
+                total: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/reports:
+    get:
+      operationId: getParkingReport
+      parameters:
+        - name: period
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - daily
+              - weekly
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+      responses:
+        '200':
+          description: Filtered parking utilization report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+              example:
+                period: "daily"
+                rows:
+                  - date: "2025-10-14"
+                    week: "Week of 13 Oct"
+                    spacesReleased: 12
+                    temporaryClaims: 5
+                    utilizationPercent: 78.5
+                dailyStatistics:
+                  releasedSpaces: 12
+                  temporaryClaims: 5
+                  utilizationPercent: 78.5
+                weeklyStatistics:
+                  releasedSpaces: 54
+                  temporaryClaims: 19
+                  utilizationPercent: 81.2
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/reports/unused:
+    get:
+      operationId: listUnusedParking
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - Dedicated
+              - Temporary
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+      responses:
+        '200':
+          description: Unused parking allocation records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnusedParkingList'
+              example:
+                records:
+                  - id: 7001
+                    category: "Unused Dedicated Parking"
+                    employee: "Ayesha Malik"
+                    vehicle: "Suzuki Cultus BRD-139"
+                    date: "2025-10-13"
+                  - id: 7002
+                    category: "Unused Temporary Parking"
+                    employee: "Bilal Ahmed"
+                    vehicle: "Grey Toyota Corolla AWC-917"
+                    date: "2025-10-13"
+                total: 2
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/employees:
+    get:
+      operationId: listEmployees
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: parkingStatus
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - Dedicated
+              - Temporary
+      responses:
+        '200':
+          description: Employee and assignment records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeList'
+              example:
+                employees:
+                  - id: 1042
+                    employeeId: "EMP-1042"
+                    name: "Ayesha Malik"
+                    email: "ayesha.malik@folio3.com"
+                    department: "Engineering"
+                    role: "Senior Engineer"
+                    parkingStatus: "Dedicated"
+                    assignedFloor: "Floor 2"
+                    vehicles:
+                      - id: 1
+                        plate: "BRD-139"
+                        make: "Suzuki"
+                        model: "Cultus"
+                        color: "Red"
+                    datedActivity:
+                      - date: "2025-10-13"
+                        kind: "Claim"
+                        status: "Claimed"
+                total: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: createEmployee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeInput'
+            example:
+              employeeId: "EMP-1220"
+              name: "Daniyal Sheikh"
+              email: "daniyal.sheikh@folio3.com"
+              department: "Operations"
+              role: "Coordinator"
+              parkingStatus: "Temporary"
+              assignedFloor: null
+              vehicles:
+                - plate: "DAN-220"
+                  make: "Honda"
+                  model: "City"
+                  color: "White"
+      responses:
+        '201':
+          description: Employee created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeRecord'
+              example:
+                employee:
+                  id: 1220
+                  employeeId: "EMP-1220"
+                  name: "Daniyal Sheikh"
+                  email: "daniyal.sheikh@folio3.com"
+                  department: "Operations"
+                  role: "Coordinator"
+                  parkingStatus: "Temporary"
+                  assignedFloor: null
+                  vehicles: []
+                  datedActivity: []
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/employees/{employeeId}:
+    get:
+      operationId: getEmployee
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Employee record with dated activity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeRecord'
+              example:
+                employee:
+                  id: 1042
+                  employeeId: "EMP-1042"
+                  name: "Ayesha Malik"
+                  email: "ayesha.malik@folio3.com"
+                  department: "Engineering"
+                  role: "Senior Engineer"
+                  parkingStatus: "Dedicated"
+                  assignedFloor: "Floor 2"
+                  vehicles:
+                    - id: 1
+                      plate: "BRD-139"
+                      make: "Suzuki"
+                      model: "Cultus"
+                      color: "Red"
+                  datedActivity:
+                    - date: "2025-10-13"
+                      kind: "Claim"
+                      status: "Claimed"
+                    - date: "2025-10-17"
+                      kind: "Release"
+                      status: "Released"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: updateEmployee
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeInput'
+            example:
+              employeeId: "EMP-1042"
+              name: "Ayesha Malik"
+              email: "ayesha.malik@folio3.com"
+              department: "Engineering"
+              role: "Senior Engineer"
+              parkingStatus: "Dedicated"
+              assignedFloor: "Floor 2"
+              vehicles:
+                - plate: "BRD-139"
+                  make: "Suzuki"
+                  model: "Cultus"
+                  color: "Red"
+      responses:
+        '200':
+          description: Updated employee record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeRecord'
+              example:
+                employee:
+                  id: 1042
+                  employeeId: "EMP-1042"
+                  name: "Ayesha Malik"
+                  email: "ayesha.malik@folio3.com"
+                  department: "Engineering"
+                  role: "Senior Engineer"
+                  parkingStatus: "Dedicated"
+                  assignedFloor: "Floor 2"
+                  vehicles:
+                    - id: 1
+                      plate: "BRD-139"
+                      make: "Suzuki"
+                      model: "Cultus"
+                      color: "Red"
+                  datedActivity:
+                    - date: "2025-10-13"
+                      kind: "Claim"
+                      status: "Claimed"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/settings:
+    get:
+      operationId: getParkingSettings
+      responses:
+        '200':
+          description: Parking configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParkingSettings'
+              example:
+                dailyReleaseTime: "08:00"
+                areas:
+                  - name: "Floor 1"
+                  - name: "Floor 2"
+                  - name: "Floor 3"
+                reportRecipients:
+                  - "parking-reports@folio3.com"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      operationId: updateParkingSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParkingSettings'
+            example:
+              dailyReleaseTime: "08:00"
+              areas:
+                - name: "Floor 1"
+                - name: "Floor 2"
+                - name: "Floor 3"
+              reportRecipients:
+                - "parking-reports@folio3.com"
+      responses:
+        '200':
+          description: Updated parking configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParkingSettings'
+              example:
+                dailyReleaseTime: "08:00"
+                areas:
+                  - name: "Floor 1"
+                  - name: "Floor 2"
+                  - name: "Floor 3"
+                reportRecipients:
+                  - "parking-reports@folio3.com"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/admins:
+    get:
+      operationId: listAdministrators
+      responses:
+        '200':
+          description: Administrator access list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdministratorList'
+              example:
+                administrators:
+                  - id: 1107
+                    name: "Mariam Farooq"
+                    email: "mariam.farooq@folio3.com"
+                    accessStatus: "active"
+                total: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: grantAdministratorAccess
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminAccessRequest'
+            example:
+              employeeId: 1201
+      responses:
+        '200':
+          description: Administrator access result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAccessResult'
+              example:
+                employee:
+                  id: 1201
+                  name: "Daniyal Sheikh"
+                  email: "daniyal.sheikh@folio3.com"
+                  accessStatus: "active"
+                message: "Daniyal Sheikh is now an administrator."
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/admins/directory:
+    get:
+      operationId: searchEmployeeDirectory
+      parameters:
+        - name: search
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Matching employees for administrator access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectorySearchResult'
+              example:
+                employees:
+                  - id: 1201
+                    name: "Daniyal Sheikh"
+                    email: "daniyal.sheikh@folio3.com"
+                total: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/admins/{employeeId}:
+    delete:
+      operationId: revokeAdministratorAccess
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Administrator access revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAccessResult'
+              example:
+                employee:
+                  id: 1107
+                  name: "Mariam Farooq"
+                  email: "mariam.farooq@folio3.com"
+                  accessStatus: "revoked"
+                message: "Access removed for Mariam Farooq."
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Date:
+      name: date
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+    DateFrom:
+      name: dateFrom
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+    DateTo:
+      name: dateTo
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "The submitted values are not valid."
+            code: "BAD_REQUEST"
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "Sign in to continue."
+            code: "UNAUTHORIZED"
+    Forbidden:
+      description: Access refused
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "You do not have access to this page."
+            code: "FORBIDDEN"
+    NotFound:
+      description: Record not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "The requested record was not found."
+            code: "NOT_FOUND"
+    Conflict:
+      description: Request conflicts with current parking state
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "No space could be claimed. The last free space was taken just now."
+            code: "CONFLICT"
+    ServiceUnavailable:
+      description: Verification or profile integration unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "Verification is not available right now."
+            code: "SERVICE_UNAVAILABLE"
+  schemas:
+    Error:
+      type: object
+      required:
+        - message
+        - code
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+    RegisterRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    RegistrationResult:
+      type: object
+      required:
+        - message
+        - email
+        - accountStatus
+      properties:
+        message:
+          type: string
+        email:
+          type: string
+          format: email
+        accountStatus:
+          type: string
+          enum:
+            - created
+    Session:
+      type: object
+      required:
+        - accessToken
+        - tokenType
+        - expiresIn
+        - employee
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+        expiresIn:
+          type: integer
+        employee:
+          $ref: '#/components/schemas/SessionEmployee'
+    SessionEmployee:
+      type: object
+      required:
+        - id
+        - name
+        - email
+        - role
+        - parkingStatus
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+            - employee
+            - gateGuard
+            - parkingAdministrator
+        parkingStatus:
+          type: string
+          enum:
+            - dedicated
+            - temporary
+    ProfileRetryRequest:
+      type: object
+      required:
+        - fields
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+    EmployeeProfile:
+      type: object
+      required:
+        - employee
+        - parking
+        - vehicles
+        - unavailableFields
+        - retryableFields
+      properties:
+        employee:
+          $ref: '#/components/schemas/ProfileEmployee'
+        parking:
+          $ref: '#/components/schemas/ProfileParking'
+        vehicles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Vehicle'
+        unavailableFields:
+          type: array
+          items:
+            type: string
+        retryableFields:
+          type: array
+          items:
+            type: string
+    ProfileEmployee:
+      type: object
+      required:
+        - id
+        - employeeId
+        - name
+        - email
+        - department
+        - role
+      properties:
+        id:
+          type: integer
+        employeeId:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        department:
+          type: string
+          nullable: true
+        role:
+          type: string
+          nullable: true
+    ProfileParking:
+      type: object
+      required:
+        - status
+        - assignedFloor
+      properties:
+        status:
+          type: string
+          enum:
+            - dedicated
+            - temporary
+        assignedFloor:
+          type: string
+          nullable: true
+    Vehicle:
+      type: object
+      required:
+        - id
+        - plate
+        - make
+        - model
+        - color
+      properties:
+        id:
+          type: integer
+        plate:
+          type: string
+        make:
+          type: string
+          nullable: true
+        model:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+    VehicleInput:
+      type: object
+      required:
+        - plate
+      properties:
+        plate:
+          type: string
+        make:
+          type: string
+          nullable: true
+        model:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+    Dashboard:
+      type: object
+      required:
+        - employee
+        - officeDate
+        - releases
+        - availability
+        - currentClaim
+        - notice
+        - unavailableFields
+      properties:
+        employee:
+          $ref: '#/components/schemas/DashboardEmployee'
+        officeDate:
+          type: string
+          format: date
+        releases:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleaseRecord'
+        availability:
+          $ref: '#/components/schemas/Availability'
+        currentClaim:
+          allOf:
+            - $ref: '#/components/schemas/ParkingClaim'
+          nullable: true
+        notice:
+          allOf:
+            - $ref: '#/components/schemas/AvailabilityNotice'
+          nullable: true
+        unavailableFields:
+          type: array
+          items:
+            type: string
+    DashboardEmployee:
+      type: object
+      required:
+        - id
+        - name
+        - email
+        - parkingStatus
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        parkingStatus:
+          type: string
+          enum:
+            - dedicated
+            - temporary
+    AvailabilityNotice:
+      type: object
+      required:
+        - message
+        - email
+      properties:
+        message:
+          type: string
+        email:
+          type: string
+          format: email
+    ReleaseRecord:
+      type: object
+      required:
+        - id
+        - date
+        - status
+        - area
+        - createdBy
+        - createdAt
+        - lastChangedBy
+        - lastChangedAt
+        - claimableAt
+      properties:
+        id:
+          type: integer
+        date:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+            - Reserved
+            - Released
+            - Claimed
+        area:
+          type: string
+          nullable: true
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastChangedBy:
+          type: string
+        lastChangedAt:
+          type: string
+          format: date-time
+        claimableAt:
+          type: string
+          format: date-time
+    ReleaseList:
+      type: object
+      required:
+        - releases
+      properties:
+        releases:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleaseRecord'
+    TodayReleaseRequest:
+      type: object
+      required:
+        - officeDate
+      properties:
+        officeDate:
+          type: string
+          format: date
+    ReleaseScheduleRequest:
+      type: object
+      required:
+        - dates
+      properties:
+        dates:
+          type: array
+          items:
+            type: string
+            format: date
+    CancelReleaseRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+    ReleaseActionResult:
+      type: object
+      required:
+        - message
+        - release
+      properties:
+        message:
+          type: string
+        release:
+          $ref: '#/components/schemas/ReleaseRecord'
+    Availability:
+      type: object
+      required:
+        - date
+        - count
+        - areas
+        - notYetClaimable
+      properties:
+        date:
+          type: string
+          format: date
+        count:
+          type: integer
+        areas:
+          type: array
+          items:
+            $ref: '#/components/schemas/AreaCount'
+        notYetClaimable:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduledArea'
+    AreaCount:
+      type: object
+      required:
+        - name
+        - count
+      properties:
+        name:
+          type: string
+        count:
+          type: integer
+    ScheduledArea:
+      type: object
+      required:
+        - area
+        - count
+        - claimableAt
+      properties:
+        area:
+          type: string
+        count:
+          type: integer
+        claimableAt:
+          type: string
+          format: date-time
+    ClaimRequest:
+      type: object
+      required:
+        - date
+        - plate
+      properties:
+        date:
+          type: string
+          format: date
+        plate:
+          type: string
+    ParkingClaim:
+      type: object
+      required:
+        - id
+        - date
+        - plate
+        - area
+        - status
+        - createdBy
+        - createdAt
+        - lastChangedBy
+        - lastChangedAt
+      properties:
+        id:
+          type: integer
+        date:
+          type: string
+          format: date
+        plate:
+          type: string
+        area:
+          type: string
+        status:
+          type: string
+          enum:
+            - Claimed
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastChangedBy:
+          type: string
+        lastChangedAt:
+          type: string
+          format: date-time
+    Verification:
+      type: object
+      required:
+        - id
+        - plate
+        - driver
+        - date
+        - time
+        - result
+        - entryStatus
+        - indicatorState
+        - reason
+        - permanentSticker
+      properties:
+        id:
+          type: integer
+        plate:
+          type: string
+        driver:
+          type: string
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+          format: time
+        result:
+          type: string
+          enum:
+            - Authorised
+            - Existing process
+            - Denied
+        entryStatus:
+          type: string
+        indicatorState:
+          type: string
+          enum:
+            - green
+            - off
+            - not used
+        reason:
+          type: string
+        permanentSticker:
+          type: boolean
+    VerificationList:
+      type: object
+      required:
+        - records
+        - total
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/Verification'
+        total:
+          type: integer
+    GateFeed:
+      type: object
+      required:
+        - cameraStatus
+        - events
+      properties:
+        cameraStatus:
+          type: string
+          enum:
+            - online
+            - unavailable
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Verification'
+    Report:
+      type: object
+      required:
+        - period
+        - rows
+        - dailyStatistics
+        - weeklyStatistics
+      properties:
+        period:
+          type: string
+          enum:
+            - daily
+            - weekly
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportRow'
+        dailyStatistics:
+          $ref: '#/components/schemas/ReportStatistics'
+        weeklyStatistics:
+          $ref: '#/components/schemas/ReportStatistics'
+    ReportRow:
+      type: object
+      required:
+        - date
+        - week
+        - spacesReleased
+        - temporaryClaims
+        - utilizationPercent
+      properties:
+        date:
+          type: string
+          format: date
+        week:
+          type: string
+        spacesReleased:
+          type: integer
+        temporaryClaims:
+          type: integer
+        utilizationPercent:
+          type: number
+          format: float
+    ReportStatistics:
+      type: object
+      required:
+        - releasedSpaces
+        - temporaryClaims
+        - utilizationPercent
+      properties:
+        releasedSpaces:
+          type: integer
+        temporaryClaims:
+          type: integer
+        utilizationPercent:
+          type: number
+          format: float
+    UnusedParkingList:
+      type: object
+      required:
+        - records
+        - total
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/UnusedParkingRecord'
+        total:
+          type: integer
+    UnusedParkingRecord:
+      type: object
+      required:
+        - id
+        - category
+        - employee
+        - vehicle
+        - date
+      properties:
+        id:
+          type: integer
+        category:
+          type: string
+          enum:
+            - Unused Dedicated Parking
+            - Unused Temporary Parking
+        employee:
+          type: string
+        vehicle:
+          type: string
+        date:
+          type: string
+          format: date
+    EmployeeList:
+      type: object
+      required:
+        - employees
+        - total
+      properties:
+        employees:
+          type: array
+          items:
+            $ref: '#/components/schemas/Employee'
+        total:
+          type: integer
+    EmployeeRecord:
+      type: object
+      required:
+        - employee
+      properties:
+        employee:
+          $ref: '#/components/schemas/Employee'
+    Employee:
+      type: object
+      required:
+        - id
+        - employeeId
+        - name
+        - email
+        - department
+        - role
+        - parkingStatus
+        - assignedFloor
+        - vehicles
+        - datedActivity
+      properties:
+        id:
+          type: integer
+        employeeId:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        department:
+          type: string
+        role:
+          type: string
+        parkingStatus:
+          type: string
+          enum:
+            - Dedicated
+            - Temporary
+        assignedFloor:
+          type: string
+          nullable: true
+        vehicles:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeVehicle'
+        datedActivity:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatedActivity'
+    EmployeeVehicle:
+      type: object
+      required:
+        - plate
+        - make
+        - model
+        - color
+      properties:
+        id:
+          type: integer
+        plate:
+          type: string
+        make:
+          type: string
+          nullable: true
+        model:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+    DatedActivity:
+      type: object
+      required:
+        - date
+        - kind
+        - status
+      properties:
+        date:
+          type: string
+          format: date
+        kind:
+          type: string
+          enum:
+            - Release
+            - Claim
+        status:
+          type: string
+          enum:
+            - Reserved
+            - Released
+            - Claimed
+    EmployeeInput:
+      type: object
+      required:
+        - employeeId
+        - name
+        - email
+        - department
+        - role
+        - parkingStatus
+        - assignedFloor
+        - vehicles
+      properties:
+        employeeId:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        department:
+          type: string
+        role:
+          type: string
+        parkingStatus:
+          type: string
+          enum:
+            - Dedicated
+            - Temporary
+        assignedFloor:
+          type: string
+          nullable: true
+        vehicles:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeVehicleInput'
+    EmployeeVehicleInput:
+      type: object
+      required:
+        - plate
+      properties:
+        plate:
+          type: string
+        make:
+          type: string
+          nullable: true
+        model:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+    ParkingSettings:
+      type: object
+      required:
+        - dailyReleaseTime
+        - areas
+        - reportRecipients
+      properties:
+        dailyReleaseTime:
+          type: string
+          format: time
+        areas:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParkingArea'
+        reportRecipients:
+          type: array
+          items:
+            type: string
+            format: email
+    ParkingArea:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+    AdministratorList:
+      type: object
+      required:
+        - administrators
+        - total
+      properties:
+        administrators:
+          type: array
+          items:
+            $ref: '#/components/schemas/Administrator'
+        total:
+          type: integer
+    Administrator:
+      type: object
+      required:
+        - id
+        - name
+        - email
+        - accessStatus
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        accessStatus:
+          type: string
+          enum:
+            - active
+            - revoked
+    AdminAccessRequest:
+      type: object
+      required:
+        - employeeId
+      properties:
+        employeeId:
+          type: integer
+    AdminAccessResult:
+      type: object
+      required:
+        - employee
+        - message
+      properties:
+        employee:
+          $ref: '#/components/schemas/Administrator'
+        message:
+          type: string
+    DirectorySearchResult:
+      type: object
+      required:
+        - employees
+        - total
+      properties:
+        employees:
+          type: array
+          items:
+            $ref: '#/components/schemas/DirectoryEmployee'
+        total:
+          type: integer
+    DirectoryEmployee:
+      type: object
+      required:
+        - id
+        - name
+        - email
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
