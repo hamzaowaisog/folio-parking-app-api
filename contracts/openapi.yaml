@@ -942,6 +942,12 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /auth/logout:
+    post:
+      operationId: logout
+      responses:
+        "204":
+          description: Bearer session invalidated
 components:
   securitySchemes:
     bearerAuth:

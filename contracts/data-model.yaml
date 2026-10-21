@@ -1,0 +1,346 @@
+# The approved data model: tables, columns and keys. Written by the factory from the approved plan; the built database is compared with it.
+tables:
+  - change: new
+    columns:
+      - name: Id
+        pk: true
+        required: true
+        type: int
+      - name: EmployeeId
+        required: true
+        type: string
+        unique: true
+      - name: Name
+        required: true
+        type: string
+      - name: Email
+        required: true
+        type: string
+        unique: true
+      - name: Department
+        required: false
+        type: string
+      - name: Role
+        required: true
+        type: string
+      - name: ParkingStatus
+        required: true
+        type: enum
+        values:
+          - Dedicated
+          - Temporary
+      - name: AssignedFloor
+        required: false
+        type: string
+    name: Employees
+    purpose: Employee identity and parking assignment used by accounts, profiles,
+      admin records, and activity.
+    uniques: []
+  - change: new
+    columns:
+      - name: Id
+        pk: true
+        required: true
+        type: int
+      - name: EmployeeId
+        references:
+          column: Id
+          onDelete: cascade
+          table: Employees
+        required: true
+        type: int
+        unique: true
+      - name: Email
+        required: true
+        type: string
+        unique: true
+      - name: PasswordHash
+        required: true
+        type: string
+      - name: Role
+        required: true
+        type: enum
+        values:
+          - employee
+          - gateGuard
+      - name: CreatedAt
+        required: true
+        type: datetime
+    name: Accounts
+    purpose: Email-and-password credentials and account role for a linked employee.
+    uniques: []
+  - change: new
+    columns:
+      - name: Id
+        pk: true
+        required: true
+        type: uuid
+      - name: AccountId
+        references:
+          column: Id
+          onDelete: cascade
+          table: Accounts
+        required: true
+        type: int
+      - name: TokenHash
+        required: true
+        type: string
+        unique: true
+      - name: ExpiresAt
+        required: true
+        type: datetime
+      - name: RevokedAt
+        required: false
+        type: datetime
+    name: SessionTokens
+    purpose: Hashed bearer-token sessions, expiry, and logout revocation state.
+    uniques: []
+  - change: new
+    columns:
+      - name: Id
+        pk: true
+        required: true
+        type: int
+      - name: EmployeeId
+        references:
+          column: Id
+          onDelete: cascade
+          table: Employees
+        required: true
+        type: int
+      - name: Plate
+        required: true
+        type: string
+      - name: Make
+        required: false
+        type: string
+      - name: Model
+        required: false
+        type: string
+      - name: Color
+        required: false
+        type: string
+    name: Vehicles
+    purpose: Vehicles registered to employees and used to validate parking claims.
+    uniques:
+      - - EmployeeId
+        - Plate
+  - change: new
+    columns:
+      - name: Id
+        pk: true
+        required: true
+        type: int
+      - name: EmployeeId
+        references:
+          column: Id
+          onDelete: restrict
+          table: Employees
+        required: true
+        type: int
+      - name: Date
+        required: true
+        type: date
+      - name: Status
+        required: true
+        type: enum
+        values:
+          - Reserved
+          - Released
+          - Claimed
+      - name: Area
+        required: false
+        type: string
+      - name: CreatedByEmployeeId
+        references:
+          column: Id
+          onDelete: restrict
+          table: Employees
+        required: true
+        type: int
+      - name: CreatedAt
+        required: true
+        type: datetime
+      - name: LastChangedByEmployeeId
+        references:
+          column: Id
+          onDelete: restrict
+          table: Employees
+        required: true
+        type: int
+      - name: LastChangedAt
+        required: true
+        type: datetime
+      - name: ClaimableAt
+        required: true
+        type: datetime
+      - name: IsCancelled
+        required: true
+        type: bool
+      - name: CancellationReason
+        required: false
+        type: text
+    name: ParkingReleases
+    purpose: Employee release reservations, release state, cancellation state, and
+      claimable time.
+    uniques:
+      - - EmployeeId
+        - Date
+  - change: new
+    columns:
+      - name: Id
+        pk: true
+        required: true
+        type: int
+      - name: EmployeeId
+        references:
+          column: Id
+          onDelete: restrict
+          table: Employees
+        required: true
+        type: int
+      - name: ReleaseId
+        references:
+          column: Id
+          onDelete: set-null
+          table: ParkingReleases
+        required: false
+        type: int
+        unique: true
+      - name: Date
+        required: true
+        type: date
+      - name: VehiclePlate
+        required: true
+        type: string
+      - name: Area
+        required: true
+        type: string
+      - name: Status
+        required: true
+        type: enum
+        values:
+          - Claimed
+      - name: CreatedByEmployeeId
+        references:
+          column: Id
+          onDelete: restrict
+          table: Employees
+        required: true
+        type: int
+      - name: CreatedAt
+        required: true
+        type: datetime
+      - name: LastChangedByEmployeeId
+        references:
+          column: Id
+          onDelete: restrict
+          table: Employees
+        required: true
+        type: int
+      - name: LastChangedAt
+        required: true
+        type: datetime
+    name: ParkingClaims
+    purpose: Temporary claims of released parking and the employee, vehicle plate,
+      date, and area assigned.
+    uniques:
+      - - EmployeeId
+        - Date
+  - change: new
+    columns:
+      - name: Id
+        pk: true
+        required: true
+        type: int
+      - name: Key
+        required: true
+        type: string
+        unique: true
+      - name: Value
+        required: true
+        type: json
+    name: ParkingSettings
+    purpose: Named persisted parking settings, stored as JSON values and composed
+      into the contracted settings response.
+    uniques: []
+  - change: new
+    columns:
+      - name: Id
+        pk: true
+        required: true
+        type: long
+      - name: Plate
+        required: true
+        type: string
+      - name: Driver
+        required: true
+        type: string
+      - name: Date
+        required: true
+        type: date
+      - name: Time
+        required: true
+        type: time
+      - name: Result
+        required: true
+        type: enum
+        values:
+          - Authorised
+          - Existing process
+          - Denied
+      - name: EntryStatus
+        required: true
+        type: string
+      - name: IndicatorState
+        required: true
+        type: enum
+        values:
+          - green
+          - off
+          - not used
+      - name: Reason
+        required: true
+        type: text
+      - name: PermanentSticker
+        required: true
+        type: bool
+    name: VerificationRecords
+    purpose: Stored gate verification events and administrator entry-record report data.
+    uniques:
+      - - Date
+        - Time
+        - Plate
+  - change: new
+    columns:
+      - name: Id
+        pk: true
+        required: true
+        type: int
+      - name: EmployeeId
+        references:
+          column: Id
+          onDelete: restrict
+          table: Employees
+        required: true
+        type: int
+        unique: true
+      - name: AccessStatus
+        required: true
+        type: enum
+        values:
+          - active
+          - revoked
+      - name: ChangedByEmployeeId
+        references:
+          column: Id
+          onDelete: restrict
+          table: Employees
+        required: true
+        type: int
+      - name: ChangedAt
+        required: true
+        type: datetime
+    name: AdministratorAccess
+    purpose: Current or revoked administrator access grants for employees.
+    uniques: []

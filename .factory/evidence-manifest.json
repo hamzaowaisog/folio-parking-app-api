@@ -1,0 +1,246 @@
+{
+  "header": {
+    "kind": "evidence-manifest",
+    "schemaVersion": 1,
+    "runId": "20261021-folio3-parking-app-introductio-9071",
+    "producedBy": {
+      "stage": "deliver"
+    },
+    "inputsHash": "55caf08866d80aead2543d7caa8d5c970c35af39728a1a49649956ffe6389f5a",
+    "createdAt": "2026-10-21T16:34:56.587Z"
+  },
+  "artifacts": [
+    {
+      "kind": "blob",
+      "path": "discover",
+      "sha": "9fcd92110f5dd3c65a8af47e8db27ec5c6295e28134314ecc79c055aad8877b9"
+    },
+    {
+      "kind": "blob",
+      "path": "discover",
+      "sha": "d9912f251712ed69d8e3e890064cef07de74a4e30b6fc648c19acb71d4189811"
+    },
+    {
+      "kind": "blob",
+      "path": "intake",
+      "sha": "79328681833647493e2b0bef9981ecb27f4c2cf8a3d1021eb6b2aba2cf4813e8"
+    },
+    {
+      "kind": "blob",
+      "path": "ground",
+      "sha": "e9f6825204936f63a4ba551739e5245a1fef8036f03088387ac67e3a8187bdec"
+    },
+    {
+      "kind": "blob",
+      "path": "clarify",
+      "sha": "7f239d009d9f2b544999557c7a28f3ae279130d9bda3fc99510058a2494cb561"
+    },
+    {
+      "kind": "blob",
+      "path": "clarify-2",
+      "sha": "1c6a26557bb83f4332be57b972ae9ff4068ba026f8d7ee2445d944c01061e373"
+    },
+    {
+      "kind": "blob",
+      "path": "drafts",
+      "sha": "4e014d491a43a1b4ba898813cf1a9c5383eaa2e10fa717b71eed8dfafc729374"
+    },
+    {
+      "kind": "blob",
+      "path": "merge",
+      "sha": "c5611719054536be817aaf6b01821af5b72440c18dc302a3bd690d65c3c8831f"
+    },
+    {
+      "kind": "blob",
+      "path": "specify",
+      "sha": "6cd4f46de146a2910911f244e8d0a053ac5207d235bdf4e2d8cf9c2d4135da03"
+    },
+    {
+      "kind": "blob",
+      "path": "specify",
+      "sha": "69b6a2323de629d22de26bfe9bd02c8a1bc7d18a1ba18d9b861eee9e5813d2e0"
+    },
+    {
+      "kind": "blob",
+      "path": "impact",
+      "sha": "49a133bbba9e482c7de9b97440678c5141602b4a3cd53a92949cd8e3c247f982"
+    },
+    {
+      "kind": "blob",
+      "path": "plan",
+      "sha": "95e93179c3f141e86a8df61c72b1a66a0ad0815f915c645ed8cc8f2b15611f46"
+    },
+    {
+      "kind": "blob",
+      "path": "approve",
+      "sha": "59f28d8466d82f64f77a82d77efdc0a5d383566d18c05cf2d9186fb3d272f28f"
+    },
+    {
+      "kind": "blob",
+      "path": "stub-commit",
+      "sha": "bff75940829004004f59c6ff9c064794f15796942c802ccb863e3aa91d685f6e"
+    },
+    {
+      "kind": "blob",
+      "path": "author-tests",
+      "sha": "f74e9d964a3189f9f06a7a23e961593820210642191a028da66cdf19a01b7f63"
+    },
+    {
+      "kind": "blob",
+      "path": "author-tests",
+      "sha": "3a0bf2d6bc76b2f71af1bd231522c7337d6485d6de79407e025bc69ecb3b3158"
+    },
+    {
+      "kind": "blob",
+      "path": "author-tests",
+      "sha": "0a9288ee03220c656bf1f1b9a438158f7fe41e0bf98abedd4eb81786a852c031"
+    },
+    {
+      "kind": "blob",
+      "path": "implement/TASK-1",
+      "sha": "dd4f55e7690edd139e1fbc4028c2eb74cef8f7bd26e4b73ccb84c6f332d521df"
+    },
+    {
+      "kind": "blob",
+      "path": "implement/TASK-1",
+      "sha": "76a9059d031e0876d84ab8baf84171c96f2898eed39c7f6a1724112e0577bae8"
+    },
+    {
+      "kind": "blob",
+      "path": "implement/TASK-2",
+      "sha": "7ca18505c000468f9657162eb486e1109d34767a2187df58ce988292d0bdfc62"
+    },
+    {
+      "kind": "blob",
+      "path": "implement/TASK-2",
+      "sha": "9300fe6a43c1f8be5da3e7bc7b6f3b0fd5ceab9e05d44382941da76e36227e04"
+    },
+    {
+      "kind": "blob",
+      "path": "implement/TASK-3",
+      "sha": "490621a2a4314a268c9098869c6a8b51d88f51305106a20819eef4322ec32987"
+    },
+    {
+      "kind": "blob",
+      "path": "implement/TASK-3",
+      "sha": "f57ccbd984ed22d96ad1680317aaa8491c5a20ab854fcc1d35f6de753c7250a7"
+    },
+    {
+      "kind": "blob",
+      "path": "implement/TASK-4",
+      "sha": "42958d38c888a4bd85d73679f4300f46fc50cbc4627e6c5e5e0aa150ee2d88f7"
+    },
+    {
+      "kind": "blob",
+      "path": "implement/TASK-4",
+      "sha": "48154c8e6c8ac104f758aae117c1b394e916f99b5c6ef2185685c0f25bf071ee"
+    },
+    {
+      "kind": "blob",
+      "path": "implement/TASK-5",
+      "sha": "e67c746f66d98ce9dd4bef071b0cf5f25806a3cae62be457022ce878f68e5e31"
+    },
+    {
+      "kind": "blob",
+      "path": "implement/TASK-5",
+      "sha": "525eabe038c0fe945eb17503002ce304d25dbe0e7789fbdbcf1b72552db8b8bb"
+    },
+    {
+      "kind": "blob",
+      "path": "implement/TASK-6",
+      "sha": "8700fd77abdbb2671c2bb52f0d8524cedede207323d9c2d358dbd71168547cf8"
+    },
+    {
+      "kind": "blob",
+      "path": "implement/TASK-6",
+      "sha": "4edcfdfe7c2ef936f1b008df9cca4986dd603c5d32b6978856bbdbe532b34680"
+    },
+    {
+      "kind": "blob",
+      "path": "integrate",
+      "sha": "4edcfdfe7c2ef936f1b008df9cca4986dd603c5d32b6978856bbdbe532b34680"
+    },
+    {
+      "kind": "blob",
+      "path": "integrate",
+      "sha": "b981d8bb02dc936ecb092c55243997740b0ffd83a0a00b18afcb453a2989f9df"
+    },
+    {
+      "kind": "blob",
+      "path": "accept",
+      "sha": "75148bd294bef300846362d68c4cb62804065cb88c7e6a386eacca88aa9ca67d"
+    },
+    {
+      "kind": "blob",
+      "path": "accept",
+      "sha": "27d41589012a5a28c0efd37b853a667a35bafcbe26cbddd4073104f2916fc85f"
+    },
+    {
+      "kind": "blob",
+      "path": "design-fidelity",
+      "sha": "c04f1bd420aef8a3aa566db7672a44ee01d4024a23dd2e99cbc08dcde35ee39b"
+    },
+    {
+      "kind": "blob",
+      "path": "design-check",
+      "sha": "6891815fb71b3fb6806ba65242effc73a4c1accb36995f9ad28e80ced91c369d"
+    },
+    {
+      "kind": "blob",
+      "path": "review",
+      "sha": "66e230628f8543eeebf0c3236eeffe7b8f3f8f0abdf824f1f451127388e4fc30"
+    }
+  ],
+  "locks": [
+    {
+      "file": "App.Tests/AcceptancePart1Tests.cs",
+      "sha": "557d60a7b1cb742609b5d51ab30976e0821ef33374ff2b226c55a02d00ea32d7"
+    },
+    {
+      "file": "App.Tests/AcceptancePart2Tests.cs",
+      "sha": "f38cf1628653178347e489572eb4f25342e07021b187c8635272cdf43ce31d17"
+    },
+    {
+      "file": "App.Tests/AcceptancePart3Tests.cs",
+      "sha": "4acfa5b55f0b92d74a3cefa6831ca39e3b845a9abbb0b76c75d8f87476c7bf0d"
+    },
+    {
+      "file": "App.Tests/AcceptancePart4Tests.cs",
+      "sha": "4f2f511c895843a0d16ce952d748d60c7a6b71e2f5df3d16ee2ee2e27dbbff17"
+    },
+    {
+      "file": "contracts/openapi.yaml",
+      "sha": "3a7aae96c0aeffbb2c2b0d0356c8ad1c421c071bd5cec18fc85fa56e158682e7"
+    },
+    {
+      "file": "contracts/data-model.yaml",
+      "sha": "6efb46c79f0e4da2b4c65a423ccfcecaecdd4206e9f7b1d72ecbbf1a159bbe2d"
+    }
+  ],
+  "approvals": [
+    {
+      "gate": "approval-a994d940",
+      "artifactSha": "a994d940ddb0a290328926d22f56040298aa9925a872a5cf39297b0c5d3cc0f6",
+      "osUser": "Hamza (via web)",
+      "gitIdentity": "mhamza",
+      "riskNote": "",
+      "at": "2026-10-21T16:34:56.588Z"
+    }
+  ],
+  "gatedTreeSha": "06d1c959f39ae97de59e4279513a19a8f740b35a",
+  "waivers": [],
+  "unlocks": [],
+  "configFingerprint": "e01ee69880d40b7137f8f5d0f18318c3b65da34a70101d86e9b3cabdc88f2447",
+  "versions": {
+    "factory": "0.1.0",
+    "commit": "7f4d263",
+    "node": "v22.22.0",
+    "mode:brownfield": "1",
+    "mode:estimate": "1",
+    "mode:design": "1",
+    "@anthropic-ai/claude-agent-sdk": "0.3.283",
+    "@anthropic-ai/sdk": "0.128.0",
+    "openai": "7.23.0",
+    "zod": "4.6.5"
+  }
+}
