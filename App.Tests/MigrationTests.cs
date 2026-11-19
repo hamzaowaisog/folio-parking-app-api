@@ -1,6 +1,7 @@
 using App.Api;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.AspNetCore.Hosting;
 using Npgsql;
 using Xunit;
 
@@ -95,5 +96,53 @@ public class MigrationSchemaTests
         await c.OpenAsync();
         await using var cmd = new NpgsqlCommand(sql, c);
         await cmd.ExecuteNonQueryAsync();
+    }
+}
+
+public class MigrationStartupTests
+{
+    [Fact]
+    public async Task StartingOnADatabaseBuiltByEnsureCreatedKeepsItsRowsAndAppliesOnlyNewMigrations()
+    {
+        using var factory = new AppFactory();
+        await using (var old = new AppDb(new DbContextOptionsBuilder<AppDb>().UseNpgsql(factory.ConnectionString).Options))
+        {
+            await old.Database.EnsureCreatedAsync(); // what the code before GTMS-32 did
+            await old.Database.ExecuteSqlRawAsync("""
+                CREATE CAST (text AS employee_parking_status) WITH INOUT AS IMPLICIT;
+                CREATE CAST (text AS account_role) WITH INOUT AS IMPLICIT;
+                CREATE CAST (text AS parking_release_status) WITH INOUT AS IMPLICIT;
+                CREATE CAST (text AS parking_claim_status) WITH INOUT AS IMPLICIT;
+                INSERT INTO "Employees" ("EmployeeId", "Name", "Email", "Role", "ParkingStatus")
+                VALUES ('EMP-OLD', 'Old Row', 'old@example.test', 'Engineer', 'Temporary')
+                """);
+        }
+
+        _ = factory.Services; // starts the app: baseline, then Migrate
+
+        await using var db = new AppDb(new DbContextOptionsBuilder<AppDb>().UseNpgsql(factory.ConnectionString).Options);
+        Assert.Equal("Old Row", await db.Employees.Where(e => e.EmployeeId == "EMP-OLD").Select(e => e.Name).SingleAsync());
+        Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+        Assert.Equal(db.Database.GetMigrations().Count(), (await db.Database.GetAppliedMigrationsAsync()).Count());
+    }
+
+    [Fact]
+    public async Task StartingOnAnEmptyDatabaseAppliesAllMigrations()
+    {
+        using var factory = new AppFactory();
+        _ = factory.Services;
+        await using var db = new AppDb(new DbContextOptionsBuilder<AppDb>().UseNpgsql(factory.ConnectionString).Options);
+        Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+        Assert.Equal(db.Database.GetMigrations().ToArray(), (await db.Database.GetAppliedMigrationsAsync()).ToArray());
+    }
+
+    [Fact]
+    public async Task DemoSeedingStillWorksAfterMigrations()
+    {
+        using var factory = new AppFactory();
+        using var seeded = factory.WithWebHostBuilder(b => b.UseSetting("Seed:Demo", "true"));
+        _ = seeded.Services;
+        await using var db = new AppDb(new DbContextOptionsBuilder<AppDb>().UseNpgsql(factory.ConnectionString).Options);
+        Assert.True(await db.Employees.AnyAsync());
     }
 }
