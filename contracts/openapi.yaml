@@ -7,6 +7,29 @@ servers:
 security:
   - bearerAuth: []
 paths:
+  /health:
+    get:
+      operationId: getHealth
+      security: []
+      responses:
+        '200':
+          description: The API is up and the database is reachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+              example:
+                status: "ok"
+                database: "ok"
+        '503':
+          description: The database is unreachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+              example:
+                status: "degraded"
+                database: "unreachable"
   /auth/register:
     post:
       operationId: registerAccount
@@ -1032,6 +1055,18 @@ components:
             message: "Verification is not available right now."
             code: "SERVICE_UNAVAILABLE"
   schemas:
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - database
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        database:
+          type: string
+          enum: [ok, unreachable]
     Error:
       type: object
       required:
