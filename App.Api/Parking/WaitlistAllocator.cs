@@ -113,7 +113,14 @@ internal static class WaitlistAllocator
         }
     }
 
-    public static bool IsClash(Exception exception) =>
-        (exception as DbUpdateException)?.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation or PostgresErrorCodes.SerializationFailure }
-        || exception is PostgresException { SqlState: PostgresErrorCodes.SerializationFailure };
+    /// <summary>A unique-index or serialization failure, however deeply the provider wrapped it.</summary>
+    public static bool IsClash(Exception exception)
+    {
+        for (var inner = exception; inner is not null; inner = inner.InnerException)
+        {
+            if (inner is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation or PostgresErrorCodes.SerializationFailure }) return true;
+        }
+
+        return false;
+    }
 }
