@@ -88,6 +88,8 @@ internal sealed class WaitlistEndpoints : IApiEndpointModule
         if (!DateOnly.TryParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day))
             return Fail(StatusCodes.Status400BadRequest, "BAD_REQUEST", "Provide the date as yyyy-MM-dd.");
 
+        // settle lapsed holds first, so leaving gives the same result whichever request came before it
+        await WaitlistAllocator.EvaluateForRead(db, day, AuthTime.ToDatabasePrecision(timeProvider.GetUtcNow()), cancellationToken);
         var entry = await db.Set<WaitlistEntry>().SingleOrDefaultAsync(candidate => candidate.EmployeeId == employeeId
             && candidate.Date == day
             && (candidate.Status == WaitlistEntryStatus.Waiting || candidate.Status == WaitlistEntryStatus.Offered), cancellationToken);

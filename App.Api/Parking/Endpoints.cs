@@ -355,7 +355,7 @@ internal sealed class ParkingEndpoints : IApiEndpointModule
         }
 
         // a request that loses a race with another claim or evaluation is retried: the holder of a spot must not lose it to one
-        for (var attempt = 0; attempt < 3; attempt++)
+        for (var attempt = 0; attempt < 8; attempt++)
         {
             db.ChangeTracker.Clear();
             employee = await db.Employees.SingleAsync(candidate => candidate.Id == employeeId, cancellationToken);

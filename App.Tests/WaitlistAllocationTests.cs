@@ -184,6 +184,23 @@ public class WaitlistAllocationTests(AppFactory factory) : IClassFixture<AppFact
     }
 
     [Fact]
+    public async Task LeavingAfterTheHoldLapsedFindsTheEntryExpiredAndTheNextPersonHoldingFromTheLapse()
+    {
+        using var app = App();
+        var date = NewDate();
+        var a = await Temp(app); var b = await Temp(app);
+        await app.Join(a, date); await app.Join(b, date);
+        await app.AddRelease(date, claimableAt: Now);
+
+        app.Time.Now = Now.AddMinutes(45); // no request has looked since the release: A's hold lapsed at 09:30
+        Assert.Equal(HttpStatusCode.NotFound, (await app.Send(HttpMethod.Delete, $"/parking/waitlist/{Fmt(date)}", a)).StatusCode);
+
+        var entry = await Mine(app, b, date);
+        Assert.Equal("Offered", entry.GetProperty("status").GetString());
+        Assert.Equal(Now.AddMinutes(60), entry.GetProperty("heldUntil").GetDateTimeOffset());
+    }
+
+    [Fact]
     public async Task ACancelledReleaseReturnsTheHoldToTheQueue()
     {
         using var app = App();
