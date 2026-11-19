@@ -5,7 +5,7 @@ description: Add or change an HTTP endpoint in the Folio Parking API, with its c
 
 # Add or change an endpoint
 
-1. **Find the area.** Endpoints live in `App.Api/<Area>/Endpoints.cs` (Admin, Auth, Gate, Parking, Profile, Reports). Add to the existing module; create a new `<Area>Endpoints : IApiEndpointModule` only for a genuinely new area. Modules are discovered by reflection.
+1. **Find the area.** Endpoints live in `App.Api/<Area>/Endpoints.cs` (Auth, Gate, Parking, Profile, Reports; Admin's is `App.Api/Admin/AdminEndpoints.cs`). Add to the existing module; create a new `<Area>Endpoints : IApiEndpointModule` only for a genuinely new area. Modules are discovered by reflection.
 2. **Map the route** in `Map(...)`:
    ```csharp
    endpoints.MapGet("/me/vehicles", ListVehicles)

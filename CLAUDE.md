@@ -14,7 +14,7 @@ There is no lint step: `dotnet format` is not enforced (existing files do not pa
 
 ## Layout
 
-- `App.Api/` the API. One folder per area (`Admin/`, `Auth/`, `Gate/`, `Parking/`, `Profile/`, `Reports/`), each with an `Endpoints.cs` module and its records.
+- `App.Api/` the API. One folder per area (`Admin/`, `Auth/`, `Gate/`, `Parking/`, `Profile/`, `Reports/`), each with an `Endpoints.cs` module (`AdminEndpoints.cs` in `Admin/`) and its records.
 - `App.Tests/` xUnit integration tests through `WebApplicationFactory`. `AppFactory` gives each test class its own empty database.
 - `contracts/openapi.yaml` and `contracts/data-model.yaml` are the API contract and data model. Keep them in step with the code.
 
