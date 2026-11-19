@@ -53,6 +53,7 @@ internal sealed class WaitlistEndpoints : IApiEndpointModule
         if (request.Date < WaitlistAllocator.Today(now))
             return Fail(StatusCodes.Status400BadRequest, "BAD_REQUEST", "The waitlist date cannot be in the past.");
 
+        await WaitlistAllocator.EvaluateForRead(db, request.Date, now, cancellationToken);
         var entries = db.Set<WaitlistEntry>();
         if (await entries.AnyAsync(entry => entry.EmployeeId == employeeId && entry.Date == request.Date
                 && (entry.Status == WaitlistEntryStatus.Waiting || entry.Status == WaitlistEntryStatus.Offered), cancellationToken))
@@ -80,6 +81,7 @@ internal sealed class WaitlistEndpoints : IApiEndpointModule
         string date,
         HttpContext context,
         AppDb db,
+        TimeProvider timeProvider,
         CancellationToken cancellationToken)
     {
         if (!TryGetEmployeeId(context, out var employeeId)) return Unauthorized();
@@ -91,9 +93,10 @@ internal sealed class WaitlistEndpoints : IApiEndpointModule
             && (candidate.Status == WaitlistEntryStatus.Waiting || candidate.Status == WaitlistEntryStatus.Offered), cancellationToken);
         if (entry is null) return Fail(StatusCodes.Status404NotFound, "NOT_FOUND", "The employee is not on the waitlist for this date.");
 
+        // a hold given back keeps its spot and ends now, so the next person's hold starts now
+        var now = AuthTime.ToDatabasePrecision(timeProvider.GetUtcNow());
+        entry.HeldUntil = entry.Status == WaitlistEntryStatus.Offered ? now : null;
         entry.Status = WaitlistEntryStatus.Left;
-        entry.ReleaseId = null;
-        entry.HeldUntil = null;
         await db.SaveChangesAsync(cancellationToken);
         return Results.NoContent();
     }
@@ -106,7 +109,11 @@ internal sealed class WaitlistEndpoints : IApiEndpointModule
     {
         if (!TryGetEmployeeId(context, out var employeeId)) return Unauthorized();
 
-        var today = WaitlistAllocator.Today(timeProvider.GetUtcNow());
+        var now = AuthTime.ToDatabasePrecision(timeProvider.GetUtcNow());
+        var today = WaitlistAllocator.Today(now);
+        var dates = await db.Set<WaitlistEntry>().Where(entry => entry.EmployeeId == employeeId && entry.Date >= today)
+            .Select(entry => entry.Date).Distinct().ToListAsync(cancellationToken);
+        foreach (var date in dates) await WaitlistAllocator.EvaluateForRead(db, date, now, cancellationToken);
         var mine = await db.Set<WaitlistEntry>().Include(entry => entry.Release)
             .Where(entry => entry.EmployeeId == employeeId && entry.Date >= today)
             .OrderBy(entry => entry.Date).ThenBy(entry => entry.Id)
