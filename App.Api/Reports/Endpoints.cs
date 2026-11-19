@@ -28,6 +28,52 @@ internal sealed class ReportEndpoints : IApiEndpointModule
             .Produces<UnusedParkingList>(StatusCodes.Status200OK)
             .Produces<Error>(StatusCodes.Status401Unauthorized)
             .Produces<Error>(StatusCodes.Status403Forbidden);
+        endpoints.MapGet("/admin/reports/waitlist", GetWaitlistReportAsync)
+            .WithName("getWaitlistReport")
+            .RequireAuthorization("Administrator")
+            .Produces<WaitlistReport>(StatusCodes.Status200OK)
+            .Produces<Error>(StatusCodes.Status400BadRequest)
+            .Produces<Error>(StatusCodes.Status401Unauthorized)
+            .Produces<Error>(StatusCodes.Status403Forbidden);
+    }
+
+    private static async Task<IResult> GetWaitlistReportAsync(
+        DateOnly? from,
+        DateOnly? to,
+        AppDb db,
+        TimeProvider timeProvider,
+        CancellationToken cancellationToken)
+    {
+        // a year at most, so one request cannot settle an unbounded number of dates
+        if (from is null || to is null || from > to || to.Value.DayNumber - from.Value.DayNumber > 365)
+        {
+            return Results.Json(new Error("Provide from and to dates (from not after to, at most 366 days apart).", "BAD_REQUEST"), statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var now = AuthTime.ToDatabasePrecision(timeProvider.GetUtcNow());
+        var activeDates = await db.Set<WaitlistEntry>()
+            .Where(entry => entry.Date >= from && entry.Date <= to
+                && (entry.Status == WaitlistEntryStatus.Waiting || entry.Status == WaitlistEntryStatus.Offered))
+            .Select(entry => entry.Date).Distinct().ToListAsync(cancellationToken);
+        foreach (var date in activeDates)
+        {
+            await WaitlistAllocator.EvaluateForRead(db, date, now, cancellationToken);
+        }
+
+        var entries = await db.Set<WaitlistEntry>().AsNoTracking()
+            .Where(entry => entry.Date >= from && entry.Date <= to)
+            .Select(entry => new { entry.Date, entry.Status, entry.OfferedAt })
+            .ToListAsync(cancellationToken);
+        var days = entries.GroupBy(entry => entry.Date).OrderBy(group => group.Key)
+            .Select(group => new WaitlistReportRow(
+                group.Key,
+                group.Count(),
+                group.Count(entry => entry.OfferedAt != null),
+                group.Count(entry => entry.Status == WaitlistEntryStatus.Claimed),
+                group.Count(entry => entry.Status == WaitlistEntryStatus.Expired),
+                group.Count(entry => entry.Status == WaitlistEntryStatus.Waiting)))
+            .ToArray();
+        return Results.Ok(new WaitlistReport(days));
     }
 
     private static async Task<IResult> GetEntryRecordsAsync(
