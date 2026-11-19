@@ -83,12 +83,12 @@ public sealed class WaitlistApp : IDisposable
         return employee.Id;
     }
 
-    /// <summary>A Dedicated owner releasing a spot on a date; claimable from claimableAt (default: a day before the date).</summary>
+    /// <summary>A Dedicated owner releasing a spot on a date; claimable from claimableAt (default: an hour before the clock's now).</summary>
     public async Task<int> AddRelease(DateOnly date, DateTimeOffset? claimableAt = null, string area = "Floor 1", int? ownerId = null)
     {
         ownerId ??= await AddEmployee(EmployeeParkingStatus.Dedicated, area);
         await using var db = Db();
-        var at = claimableAt ?? new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)).AddDays(-1);
+        var at = claimableAt ?? Time.Now.AddHours(-1);
         var release = new ParkingRelease
         {
             EmployeeId = ownerId.Value, Date = date, Status = ParkingReleaseStatus.Released, Area = area,
