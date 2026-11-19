@@ -146,3 +146,14 @@ public class MigrationStartupTests
         Assert.True(await db.Employees.AnyAsync());
     }
 }
+
+public class AppFactoryMigrationTests(AppFactory factory) : IClassFixture<AppFactory>
+{
+    [Fact]
+    public async Task TheFactoryDatabaseIsBuiltThroughMigrations()
+    {
+        _ = factory.Services;
+        await using var db = new AppDb(new DbContextOptionsBuilder<AppDb>().UseNpgsql(factory.ConnectionString).Options);
+        Assert.NotEmpty(await db.Database.GetAppliedMigrationsAsync());
+    }
+}
