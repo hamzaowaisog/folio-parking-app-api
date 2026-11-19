@@ -25,6 +25,7 @@ namespace App.Api.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "employee_parking_status", new[] { "Dedicated", "Temporary" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "parking_claim_status", new[] { "Claimed" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "parking_release_status", new[] { "Reserved", "Released", "Claimed" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "waitlist_entry_status", new[] { "Waiting", "Offered", "Claimed", "Expired", "Left" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("App.Api.Account", b =>
@@ -380,6 +381,50 @@ namespace App.Api.Migrations
                     b.ToTable("VerificationRecords");
                 });
 
+            modelBuilder.Entity("App.Api.WaitlistEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("HeldUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("OfferedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("ReleaseId")
+                        .HasColumnType("integer");
+
+                    b.Property<WaitlistEntryStatus>("Status")
+                        .HasColumnType("waitlist_entry_status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReleaseId")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 'Offered'");
+
+                    b.HasIndex("Date", "Status");
+
+                    b.HasIndex("EmployeeId", "Date")
+                        .IsUnique()
+                        .HasFilter("\"Status\" IN ('Waiting', 'Offered')");
+
+                    b.ToTable("WaitlistEntries");
+                });
+
             modelBuilder.Entity("App.Api.Account", b =>
                 {
                     b.HasOne("App.Api.Employee", "Employee")
@@ -491,6 +536,24 @@ namespace App.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("App.Api.WaitlistEntry", b =>
+                {
+                    b.HasOne("App.Api.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("App.Api.ParkingRelease", "Release")
+                        .WithMany()
+                        .HasForeignKey("ReleaseId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("Release");
                 });
 
             modelBuilder.Entity("App.Api.Account", b =>

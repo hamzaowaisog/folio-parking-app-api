@@ -320,6 +320,13 @@ public static class SeedData
             ) THEN
                 EXECUTE 'CREATE CAST (text AS parking_claim_status) WITH INOUT AS IMPLICIT';
             END IF;
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_cast
+                WHERE castsource = 'text'::regtype
+                  AND casttarget = 'waitlist_entry_status'::regtype
+            ) THEN
+                EXECUTE 'CREATE CAST (text AS waitlist_entry_status) WITH INOUT AS IMPLICIT';
+            END IF;
         END
         $$;
         """;

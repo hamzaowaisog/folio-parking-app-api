@@ -33,8 +33,9 @@ public class MigrationSchemaTests
         UNION ALL SELECT 'cast ' || castsource::regtype || ' ' || casttarget::regtype FROM pg_cast WHERE casttarget IN (SELECT oid FROM pg_type WHERE typtype = 'e')
         """;
 
+    // GTMS-32 T2 proved the initial migration equals the old EnsureCreated schema; from T5 on the model has the waitlist too
     [Fact]
-    public async Task InitialMigrationBuildsTheSameSchemaAsEnsureCreated()
+    public async Task MigrationsBuildTheSameSchemaAsTheModel()
     {
         var oldDb = await NewDatabase();
         var newDb = await NewDatabase();
@@ -46,7 +47,7 @@ public class MigrationSchemaTests
                 await db.Database.ExecuteSqlRawAsync(OldCastsSql);
             }
             await using (var db = Context(newDb))
-                await db.Database.MigrateAsync("InitialCreate");
+                await db.Database.MigrateAsync();
 
             var expected = await Schema(oldDb);
             Assert.Contains(expected, line => line.StartsWith("cast "));
@@ -60,7 +61,8 @@ public class MigrationSchemaTests
         CREATE CAST (text AS employee_parking_status) WITH INOUT AS IMPLICIT;
         CREATE CAST (text AS account_role) WITH INOUT AS IMPLICIT;
         CREATE CAST (text AS parking_release_status) WITH INOUT AS IMPLICIT;
-        CREATE CAST (text AS parking_claim_status) WITH INOUT AS IMPLICIT
+        CREATE CAST (text AS parking_claim_status) WITH INOUT AS IMPLICIT;
+        CREATE CAST (text AS waitlist_entry_status) WITH INOUT AS IMPLICIT
         """;
 
     private static AppDb Context(string connection) =>
@@ -107,12 +109,10 @@ public class MigrationStartupTests
         using var factory = new AppFactory();
         await using (var old = new AppDb(new DbContextOptionsBuilder<AppDb>().UseNpgsql(factory.ConnectionString).Options))
         {
-            await old.Database.EnsureCreatedAsync(); // what the code before GTMS-32 did
+            // the schema the code before GTMS-32 left behind: the initial migration is proven equal to it, minus the history table
+            await old.Database.MigrateAsync("InitialCreate");
             await old.Database.ExecuteSqlRawAsync("""
-                CREATE CAST (text AS employee_parking_status) WITH INOUT AS IMPLICIT;
-                CREATE CAST (text AS account_role) WITH INOUT AS IMPLICIT;
-                CREATE CAST (text AS parking_release_status) WITH INOUT AS IMPLICIT;
-                CREATE CAST (text AS parking_claim_status) WITH INOUT AS IMPLICIT;
+                DROP TABLE "__EFMigrationsHistory";
                 INSERT INTO "Employees" ("EmployeeId", "Name", "Email", "Role", "ParkingStatus")
                 VALUES ('EMP-OLD', 'Old Row', 'old@example.test', 'Engineer', 'Temporary')
                 """);
@@ -155,5 +155,27 @@ public class AppFactoryMigrationTests(AppFactory factory) : IClassFixture<AppFac
         _ = factory.Services;
         await using var db = new AppDb(new DbContextOptionsBuilder<AppDb>().UseNpgsql(factory.ConnectionString).Options);
         Assert.NotEmpty(await db.Database.GetAppliedMigrationsAsync());
+    }
+}
+
+public class WaitlistSchemaTests(AppFactory factory) : IClassFixture<AppFactory>
+{
+    [Fact]
+    public async Task WaitlistTableRefusesTwoActiveEntriesForOneDate()
+    {
+        _ = factory.Services;
+        await using var c = new NpgsqlConnection(factory.ConnectionString);
+        await c.OpenAsync();
+        async Task Run(string sql) { await using var cmd = new NpgsqlCommand(sql, c); await cmd.ExecuteNonQueryAsync(); }
+        const string insert = """INSERT INTO "WaitlistEntries" ("EmployeeId", "Date", "Status", "JoinedAt") SELECT "Id", '2030-01-01', '{0}', now() FROM "Employees" WHERE "EmployeeId" = 'W1'""";
+        await Run("""
+            INSERT INTO "Employees" ("EmployeeId", "Name", "Email", "Role", "ParkingStatus")
+            VALUES ('W1', 'W One', 'w1@example.test', 'x', 'Temporary')
+            """);
+        await Run(string.Format(insert, "Waiting"));
+        await Assert.ThrowsAsync<PostgresException>(() => Run(string.Format(insert, "Offered")));
+        // a Left entry does not block a new one
+        await Run("""UPDATE "WaitlistEntries" SET "Status" = 'Left'""");
+        await Run(string.Format(insert, "Waiting"));
     }
 }
