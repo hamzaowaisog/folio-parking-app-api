@@ -274,7 +274,8 @@ internal sealed class AdminEndpoints : IApiEndpointModule
                 new ParkingArea { Name = "Floor 2" },
                 new ParkingArea { Name = "Floor 3" }
             }),
-            ReportRecipients = ReadSetting(values, "reportRecipients", new[] { "parking-reports@folio3.com" })
+            ReportRecipients = ReadSetting(values, "reportRecipients", new[] { "parking-reports@folio3.com" }),
+            WaitlistHoldMinutes = ReadSetting(values, "waitlistHoldMinutes", 30)
         });
     }
 
@@ -285,16 +286,20 @@ internal sealed class AdminEndpoints : IApiEndpointModule
     {
         if (!IsValid(request)) return BadRequest();
 
+        var storedHold = await db.Set<ParkingSetting>().AsNoTracking()
+            .Where(setting => setting.Key == "waitlistHoldMinutes").Select(setting => setting.Value).SingleOrDefaultAsync(cancellationToken);
         var settings = new ParkingSettings
         {
             DailyReleaseTime = TimeOnly.Parse(request.DailyReleaseTime, CultureInfo.InvariantCulture)
                 .ToString("HH:mm:ss", CultureInfo.InvariantCulture),
             Areas = request.Areas.Select(area => new ParkingArea { Name = area.Name.Trim() }).ToArray(),
-            ReportRecipients = request.ReportRecipients.Select(email => email.Trim()).ToArray()
+            ReportRecipients = request.ReportRecipients.Select(email => email.Trim()).ToArray(),
+            WaitlistHoldMinutes = request.WaitlistHoldMinutes ?? storedHold?.Deserialize<int>() ?? 30
         };
         await SaveSetting(db, "dailyReleaseTime", settings.DailyReleaseTime, cancellationToken);
         await SaveSetting(db, "areas", settings.Areas, cancellationToken);
         await SaveSetting(db, "reportRecipients", settings.ReportRecipients, cancellationToken);
+        await SaveSetting(db, "waitlistHoldMinutes", settings.WaitlistHoldMinutes, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         return Results.Ok(settings);
     }
@@ -479,6 +484,7 @@ internal sealed class AdminEndpoints : IApiEndpointModule
 
     private static bool IsValid(ParkingSettings request) =>
         TimeOnly.TryParse(request.DailyReleaseTime, CultureInfo.InvariantCulture, out _)
+        && request.WaitlistHoldMinutes is null or >= 5 and <= 240
         && request.Areas is { Length: > 0 }
         && request.Areas.All(area => area is not null && !string.IsNullOrWhiteSpace(area.Name))
         && request.Areas.Select(area => area?.Name?.Trim())
