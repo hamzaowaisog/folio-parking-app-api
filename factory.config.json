@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "commands": {
+    "setup": "dotnet restore",
+    "build": "dotnet build --no-restore",
+    "test": "./scripts/test.sh",
+    "fastTest": "./scripts/test.sh --filter FullyQualifiedName~App.Tests.HealthTests"
+  },
+  "platforms": ["macos", "linux"]
+}

@@ -1,0 +1,5 @@
+# Never edited by the factory
+.github/**
+scripts/test.sh
+*.pem
+.env
