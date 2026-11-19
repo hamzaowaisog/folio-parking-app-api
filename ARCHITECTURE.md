@@ -7,18 +7,18 @@ Web app (separate repo) ──HTTP/JSON, Bearer token──▶ App.Api (ASP.NET 
 ## Request path
 
 1. `Program.cs` configures OpenAPI, the `AppDb` context, Bearer authentication (`Auth/BearerAuthenticationHandler`), two policies (`Administrator`, `GateOrAdmin`) and CORS for the web app's origin.
-2. At startup it creates the schema with `EnsureCreated()`, adds the text-to-enum casts, and seeds demo rows only when `Seed:Demo` is true.
+2. At startup it applies EF Core migrations (a database built by the earlier `EnsureCreated()` is baselined first; the text-to-enum casts are part of the migrations) and seeds demo rows only when `Seed:Demo` is true. See `docs/adr/0001-ef-core-migrations-and-waitlist-allocation.md`.
 3. Every `IApiEndpointModule` in the assembly is registered and mapped. Modules:
    - `Auth/`: sign-in, sessions (hashed session tokens), accounts and roles.
    - `Profile/`: the signed-in employee's profile and vehicles (`/me/...`).
-   - `Parking/`: releasing a spot for a date, claiming a released spot, the dashboard and availability.
+   - `Parking/`: releasing a spot for a date, claiming a released spot, the waitlist (spots are held for the first person in line, evaluated lazily), the dashboard and availability.
    - `Gate/`: plate verification for gate guards, with the indicator state.
-   - `Admin/`: employees, administrators' access, parking settings (areas, daily release time, report recipients).
+   - `Admin/`: employees, administrators' access, parking settings (areas, daily release time, report recipients, waitlist hold minutes).
    - `Reports/`: parking reports by period, unused parking, verification lists.
 
 ## Data
 
-`AppDb` holds employees, accounts and session tokens explicitly; other entities implement `IAppEntity` and are added by reflection. Four PostgreSQL enums (`employee_parking_status`, `account_role`, `parking_release_status`, `parking_claim_status`) are mapped in `AppDb`. The data model is documented in `contracts/data-model.yaml`.
+`AppDb` holds employees, accounts and session tokens explicitly; other entities implement `IAppEntity` and are added by reflection. Five PostgreSQL enums (`employee_parking_status`, `account_role`, `parking_release_status`, `parking_claim_status`, `waitlist_entry_status`) are mapped in `AppDb`. The data model is documented in `contracts/data-model.yaml`.
 
 ## Contract
 

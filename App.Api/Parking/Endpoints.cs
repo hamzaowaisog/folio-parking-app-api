@@ -89,7 +89,8 @@ internal sealed class ParkingEndpoints : IApiEndpointModule
             .Include(claim => claim.CreatedByEmployee)
             .Include(claim => claim.LastChangedByEmployee)
             .SingleOrDefaultAsync(claim => claim.EmployeeId == employeeId && claim.Date == officeDate, cancellationToken);
-        var availability = await BuildAvailability(db, officeDate, now, cancellationToken);
+        await WaitlistAllocator.EvaluateForRead(db, officeDate, now, cancellationToken);
+        var availability = await BuildAvailability(db, officeDate, now, employeeId, cancellationToken);
         var notice = new AvailabilityNotice(
             $"There are {availability.Count} parking spaces available.",
             employee.Email);
@@ -297,14 +298,15 @@ internal sealed class ParkingEndpoints : IApiEndpointModule
         TimeProvider timeProvider,
         CancellationToken cancellationToken)
     {
-        if (!TryGetEmployeeId(context, out _))
+        if (!TryGetEmployeeId(context, out var callerId))
         {
             return Unauthorized();
         }
 
         var now = AuthTime.ToDatabasePrecision(timeProvider.GetUtcNow());
         var officeDate = date ?? DateOnly.FromDateTime(now.UtcDateTime);
-        return Results.Ok(await BuildAvailability(db, officeDate, now, cancellationToken));
+        await WaitlistAllocator.EvaluateForRead(db, officeDate, now, cancellationToken);
+        return Results.Ok(await BuildAvailability(db, officeDate, now, callerId, cancellationToken));
     }
 
     private static async Task<IResult> ClaimParkingSpace(
@@ -352,67 +354,91 @@ internal sealed class ParkingEndpoints : IApiEndpointModule
             return Conflict("This employee already has a parking claim for the requested date.");
         }
 
-        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
-        var release = await db.Set<ParkingRelease>()
-            .Include(candidate => candidate.Employee)
-            .Where(candidate => candidate.Date == request.Date
-                && !candidate.IsCancelled
-                && candidate.ClaimableAt <= now
-                && (candidate.Status == ParkingReleaseStatus.Released || candidate.Status == ParkingReleaseStatus.Reserved)
-                && candidate.Area != null
-                && !db.Set<ParkingClaimEntity>().Any(claim => claim.ReleaseId == candidate.Id))
-            .OrderBy(candidate => candidate.Id)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (release is null)
+        // a request that loses a race with another claim or evaluation is retried: the holder of a spot must not lose it to one
+        for (var attempt = 0; attempt < 8; attempt++)
         {
-            return Conflict("No claimable parking space is available for the requested date.");
+            db.ChangeTracker.Clear();
+            employee = await db.Employees.SingleAsync(candidate => candidate.Id == employeeId, cancellationToken);
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+            try
+            {
+                await WaitlistAllocator.Evaluate(db, request.Date, now, cancellationToken);
+                await db.SaveChangesAsync(cancellationToken);
+                // the spot held for the caller first, then the lowest-numbered spot nobody holds
+                var release = await WaitlistAllocator.ClaimableFor(db, request.Date, now, employeeId)
+                    .Include(candidate => candidate.Employee)
+                    .OrderBy(candidate => db.Set<WaitlistEntry>().Any(entry => entry.ReleaseId == candidate.Id
+                        && entry.Status == WaitlistEntryStatus.Offered && entry.EmployeeId == employeeId) ? 0 : 1)
+                    .ThenBy(candidate => candidate.Id)
+                    .FirstOrDefaultAsync(cancellationToken);
+                if (release is null)
+                {
+                    await transaction.CommitAsync(cancellationToken); // keep the expiry and offers just worked out
+                    return Conflict("No claimable parking space is available for the requested date.");
+                }
+
+                var claim = new ParkingClaimEntity
+                {
+                    EmployeeId = employee.Id,
+                    Employee = employee,
+                    ReleaseId = release.Id,
+                    Release = release,
+                    Date = request.Date,
+                    VehiclePlate = plate,
+                    Area = release.Area!,
+                    Status = ParkingClaimStatus.Claimed,
+                    CreatedByEmployeeId = employee.Id,
+                    CreatedByEmployee = employee,
+                    CreatedAt = now,
+                    LastChangedByEmployeeId = employee.Id,
+                    LastChangedByEmployee = employee,
+                    LastChangedAt = now
+                };
+                db.Set<ParkingClaimEntity>().Add(claim);
+                release.Status = ParkingReleaseStatus.Claimed;
+                release.LastChangedByEmployeeId = employee.Id;
+                release.LastChangedByEmployee = employee;
+                release.LastChangedAt = now;
+                // the caller's place in line is used up: Claimed if they held a spot, Left if they were still waiting
+                var place = await db.Set<WaitlistEntry>().SingleOrDefaultAsync(entry => entry.EmployeeId == employeeId && entry.Date == request.Date
+                    && (entry.Status == WaitlistEntryStatus.Waiting || entry.Status == WaitlistEntryStatus.Offered), cancellationToken);
+                if (place is not null)
+                {
+                    if (place.Status == WaitlistEntryStatus.Offered && place.ReleaseId == release.Id)
+                    {
+                        place.Status = WaitlistEntryStatus.Claimed;
+                    }
+                    else
+                    {
+                        // a hold on another spot is given back from now
+                        place.HeldUntil = place.Status == WaitlistEntryStatus.Offered ? now : place.HeldUntil;
+                        place.Status = WaitlistEntryStatus.Left;
+                    }
+                }
+
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return Results.Json(ToParkingClaim(claim), statusCode: StatusCodes.Status201Created);
+            }
+            catch (Exception exception) when (WaitlistAllocator.IsClash(exception))
+            {
+                // try again on a fresh view of the rows
+            }
         }
 
-        var claim = new ParkingClaimEntity
-        {
-            EmployeeId = employee.Id,
-            Employee = employee,
-            ReleaseId = release.Id,
-            Release = release,
-            Date = request.Date,
-            VehiclePlate = plate,
-            Area = release.Area!,
-            Status = ParkingClaimStatus.Claimed,
-            CreatedByEmployeeId = employee.Id,
-            CreatedByEmployee = employee,
-            CreatedAt = now,
-            LastChangedByEmployeeId = employee.Id,
-            LastChangedByEmployee = employee,
-            LastChangedAt = now
-        };
-        db.Set<ParkingClaimEntity>().Add(claim);
-        release.Status = ParkingReleaseStatus.Claimed;
-        release.LastChangedByEmployeeId = employee.Id;
-        release.LastChangedByEmployee = employee;
-        release.LastChangedAt = now;
-        try
-        {
-            await db.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-        }
-        catch (DbUpdateException exception) when (IsUniqueViolation(exception) || IsSerializationFailure(exception))
-        {
-            return Conflict("No claimable parking space is available for the requested date.");
-        }
-        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.SerializationFailure)
-        {
-            return Conflict("No claimable parking space is available for the requested date.");
-        }
-
-        return Results.Json(ToParkingClaim(claim), statusCode: StatusCodes.Status201Created);
+        return Conflict("No claimable parking space is available for the requested date.");
     }
 
     private static async Task<Availability> BuildAvailability(
         AppDb db,
         DateOnly date,
         DateTimeOffset now,
+        int employeeId,
         CancellationToken cancellationToken)
     {
+        var heldForOthers = await db.Set<WaitlistEntry>()
+            .Where(entry => entry.Date == date && entry.Status == WaitlistEntryStatus.Offered && entry.EmployeeId != employeeId && entry.ReleaseId != null)
+            .Select(entry => entry.ReleaseId!.Value).ToListAsync(cancellationToken);
         var releases = await db.Set<ParkingRelease>()
             .Where(release => release.Date == date && !release.IsCancelled)
             .OrderBy(release => release.Id)
@@ -422,7 +448,7 @@ internal sealed class ParkingEndpoints : IApiEndpointModule
             .Select(claim => claim.ReleaseId!.Value)
             .ToListAsync(cancellationToken);
         var claimed = claimedReleaseIds.ToHashSet();
-        var remaining = releases.Where(release => !claimed.Contains(release.Id) && !string.IsNullOrWhiteSpace(release.Area)).ToArray();
+        var remaining = releases.Where(release => !claimed.Contains(release.Id) && !heldForOthers.Contains(release.Id) && !string.IsNullOrWhiteSpace(release.Area)).ToArray();
         var available = remaining.Where(release => release.ClaimableAt <= now
             && (release.Status == ParkingReleaseStatus.Released || release.Status == ParkingReleaseStatus.Reserved));
         var areas = available.GroupBy(release => release.Area!, StringComparer.Ordinal)

@@ -440,6 +440,75 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '409':
           $ref: '#/components/responses/Conflict'
+  /parking/waitlist:
+    post:
+      operationId: joinParkingWaitlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WaitlistJoinRequest'
+            example:
+              date: "2025-10-15"
+      responses:
+        '201':
+          description: The employee's place in line for the date
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaitlistRecord'
+              example:
+                date: "2025-10-15"
+                position: 2
+                status: "Waiting"
+                heldUntil: null
+                area: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      operationId: listMyWaitlist
+      responses:
+        '200':
+          description: The signed-in employee's upcoming waitlist entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaitlistList'
+              example:
+                entries:
+                  - date: "2025-10-15"
+                    position: 1
+                    status: "Offered"
+                    heldUntil: "2025-10-14T08:33:00+00:00"
+                    area: "Floor 3"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /parking/waitlist/{date}:
+    delete:
+      operationId: leaveParkingWaitlist
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '204':
+          description: Left the waitlist; everyone behind moved up one place
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /gate/events/live:
     get:
       operationId: getLiveGateEvents
@@ -590,6 +659,43 @@ paths:
                     vehicle: "Grey Toyota Corolla AWC-917"
                     date: "2025-10-13"
                 total: 2
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/reports/waitlist:
+    get:
+      operationId: getWaitlistReport
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Waitlist demand per date that has entries, at most 366 days
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaitlistReport'
+              example:
+                days:
+                  - date: "2025-10-15"
+                    joined: 4
+                    offered: 2
+                    claimed: 1
+                    expired: 1
+                    stillWaiting: 2
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1468,6 +1574,83 @@ components:
         claimableAt:
           type: string
           format: date-time
+    WaitlistJoinRequest:
+      type: object
+      required:
+        - date
+      properties:
+        date:
+          type: string
+          format: date
+    WaitlistRecord:
+      type: object
+      required:
+        - date
+        - status
+      properties:
+        date:
+          type: string
+          format: date
+        position:
+          type: integer
+          nullable: true
+          description: 1-based place among people still in line; null once Claimed, Expired or Left.
+        status:
+          type: string
+          enum:
+            - Waiting
+            - Offered
+            - Claimed
+            - Expired
+            - Left
+        heldUntil:
+          type: string
+          format: date-time
+          nullable: true
+        area:
+          type: string
+          nullable: true
+    WaitlistList:
+      type: object
+      required:
+        - entries
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/WaitlistRecord'
+    WaitlistReport:
+      type: object
+      required:
+        - days
+      properties:
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/WaitlistReportRow'
+    WaitlistReportRow:
+      type: object
+      required:
+        - date
+        - joined
+        - offered
+        - claimed
+        - expired
+        - stillWaiting
+      properties:
+        date:
+          type: string
+          format: date
+        joined:
+          type: integer
+        offered:
+          type: integer
+        claimed:
+          type: integer
+        expired:
+          type: integer
+        stillWaiting:
+          type: integer
     ClaimRequest:
       type: object
       required:
@@ -1851,6 +2034,12 @@ components:
           items:
             type: string
             format: email
+        waitlistHoldMinutes:
+          type: integer
+          minimum: 5
+          maximum: 240
+          default: 30
+          description: Minutes a spot is held for the first person on the waitlist. Left out of a PUT, the stored value is kept.
     ParkingArea:
       type: object
       required:

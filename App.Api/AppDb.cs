@@ -15,7 +15,8 @@ public class AppDb(DbContextOptions<AppDb> options) : DbContext(options)
             .MapEnum<EmployeeParkingStatus>("employee_parking_status")
             .MapEnum<AccountRole>("account_role")
             .MapEnum<ParkingReleaseStatus>("parking_release_status")
-            .MapEnum<ParkingClaimStatus>("parking_claim_status"));
+            .MapEnum<ParkingClaimStatus>("parking_claim_status")
+            .MapEnum<WaitlistEntryStatus>("waitlist_entry_status"));
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -23,6 +24,7 @@ public class AppDb(DbContextOptions<AppDb> options) : DbContext(options)
         modelBuilder.HasPostgresEnum<AccountRole>(name: "account_role");
         modelBuilder.HasPostgresEnum<ParkingReleaseStatus>(name: "parking_release_status");
         modelBuilder.HasPostgresEnum<ParkingClaimStatus>(name: "parking_claim_status");
+        modelBuilder.HasPostgresEnum<WaitlistEntryStatus>(name: "waitlist_entry_status");
 
         foreach (var entityType in Assembly.GetExecutingAssembly().GetTypes()
                      .Where(type => type is { IsAbstract: false, IsInterface: false } && typeof(IAppEntity).IsAssignableFrom(type)))
@@ -70,5 +72,16 @@ public class AppDb(DbContextOptions<AppDb> options) : DbContext(options)
         modelBuilder.Entity<ParkingClaimEntity>()
             .Property(claim => claim.Status)
             .HasColumnType("parking_claim_status");
+
+        // the database itself refuses a second active place on a date, and two people holding one spot
+        modelBuilder.Entity<WaitlistEntry>(entity =>
+        {
+            entity.Property(entry => entry.Status).HasColumnType("waitlist_entry_status");
+            entity.HasIndex(entry => new { entry.EmployeeId, entry.Date }).IsUnique()
+                .HasFilter("\"Status\" IN ('Waiting', 'Offered')");
+            entity.HasIndex(entry => entry.ReleaseId).IsUnique()
+                .HasFilter("\"Status\" = 'Offered'");
+            entity.HasIndex(entry => new { entry.Date, entry.Status });
+        });
     }
 }

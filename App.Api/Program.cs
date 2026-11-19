@@ -50,7 +50,7 @@ app.Use(async (context, next) =>
 
     await next();
 });
-// Create the database with every table when the app starts. The build also runs this file, to write the API's OpenAPI
+// Bring the database up to date with the migrations when the app starts (casts included). The build also runs this file, to write the API's OpenAPI
 // document, and must not touch the database then. Keep this: the factory starts the app and reads the database it creates.
 if (System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name != "GetDocument.Insider")
 {
@@ -59,41 +59,7 @@ if (System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name != "GetDocumen
     {
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-        db.Database.EnsureCreated();
-        db.Database.ExecuteSqlRaw("""
-            DO $$
-            BEGIN
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_cast
-                    WHERE castsource = 'text'::regtype
-                      AND casttarget = 'employee_parking_status'::regtype
-                ) THEN
-                    EXECUTE 'CREATE CAST (text AS employee_parking_status) WITH INOUT AS IMPLICIT';
-                END IF;
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_cast
-                    WHERE castsource = 'text'::regtype
-                      AND casttarget = 'account_role'::regtype
-                ) THEN
-                    EXECUTE 'CREATE CAST (text AS account_role) WITH INOUT AS IMPLICIT';
-                END IF;
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_cast
-                    WHERE castsource = 'text'::regtype
-                      AND casttarget = 'parking_release_status'::regtype
-                ) THEN
-                    EXECUTE 'CREATE CAST (text AS parking_release_status) WITH INOUT AS IMPLICIT';
-                END IF;
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_cast
-                    WHERE castsource = 'text'::regtype
-                      AND casttarget = 'parking_claim_status'::regtype
-                ) THEN
-                    EXECUTE 'CREATE CAST (text AS parking_claim_status) WITH INOUT AS IMPLICIT';
-                END IF;
-            END
-            $$;
-            """);
+        DatabaseMigrator.Run(db);
         // sample rows, only when asked for (Seed__Demo=true): tests and the factory's own checks start on an empty database
         if (app.Configuration.GetValue<bool>("Seed:Demo")) SeedData.Run(db, app.Configuration["Seed:Password"]);
     }
