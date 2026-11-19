@@ -253,6 +253,51 @@ tables:
         pk: true
         required: true
         type: int
+      - name: EmployeeId
+        references:
+          column: Id
+          onDelete: restrict
+          table: Employees
+        required: true
+        type: int
+      - name: Date
+        required: true
+        type: date
+      - name: Status
+        required: true
+        type: enum
+        values:
+          - Waiting
+          - Offered
+          - Claimed
+          - Expired
+          - Left
+      - name: JoinedAt
+        required: true
+        type: datetime
+      - name: ReleaseId
+        references:
+          column: Id
+          onDelete: set-null
+          table: ParkingReleases
+        required: false
+        type: int
+      - name: OfferedAt
+        required: false
+        type: datetime
+      - name: HeldUntil
+        required: false
+        type: datetime
+    name: WaitlistEntries
+    purpose: Temporary employees' places in line for a date, in queue order by Id, and the spot held for the one being offered.
+      One Waiting or Offered entry per employee and date; one Offered entry per release (partial unique indexes).
+    uniques: []
+  - change: new
+    columns:
+      - name: Id
+        pk: true
+        required: true
+        type: int
       - name: Key
         required: true
         type: string
